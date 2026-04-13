@@ -37,7 +37,7 @@
   "homepage": "https://paybridgenp.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/paybridgenp/paybridgenp-sdk"
+    "url": "git+https://github.com/paybridgenp/paybridgenp-sdk.git"
   },
   "license": "MIT",
   "devDependencies": {

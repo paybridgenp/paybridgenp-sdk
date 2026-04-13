@@ -71,12 +71,32 @@ type CreateWebhookParams = {
     url: string;
     events?: WebhookEventType[];
 };
+type UpdateWebhookParams = {
+    url?: string;
+    events?: WebhookEventType[];
+    enabled?: boolean;
+};
 type WebhookEndpoint = {
     id: string;
     url: string;
     events: WebhookEventType[];
     enabled: boolean;
     created_at: string;
+};
+type WebhookDeliveryStatus = "pending" | "success" | "failed" | "retrying";
+type WebhookDelivery = {
+    id: string;
+    webhookEndpointId: string;
+    paymentId: string | null;
+    eventType: string;
+    payload: Record<string, unknown>;
+    status: WebhookDeliveryStatus;
+    attempts: number;
+    lastAttemptAt: string | null;
+    nextAttemptAt: string | null;
+    responseStatus: number | null;
+    responseBody: string | null;
+    createdAt: string;
 };
 
 declare class HttpClient {
@@ -114,9 +134,13 @@ declare class WebhooksResource {
     list(): Promise<{
         data: WebhookEndpoint[];
     }>;
+    update(id: string, params: UpdateWebhookParams): Promise<WebhookEndpoint>;
     delete(id: string): Promise<{
         deleted: boolean;
         id: string;
+    }>;
+    listDeliveries(id: string): Promise<{
+        data: WebhookDelivery[];
     }>;
     /**
      * Verify and parse a webhook event from an incoming request.

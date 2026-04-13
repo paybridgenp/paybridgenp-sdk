@@ -1,6 +1,8 @@
 import type { HttpClient } from "../http";
 import type {
   CreateWebhookParams,
+  UpdateWebhookParams,
+  WebhookDelivery,
   WebhookEndpoint,
   WebhookEvent,
 } from "../types";
@@ -19,9 +21,19 @@ export class WebhooksResource {
     return this.http.get<{ data: WebhookEndpoint[] }>("/v1/webhooks");
   }
 
+  update(id: string, params: UpdateWebhookParams): Promise<WebhookEndpoint> {
+    if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
+    return this.http.patch<WebhookEndpoint>(`/v1/webhooks/${id}`, params);
+  }
+
   delete(id: string): Promise<{ deleted: boolean; id: string }> {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
     return this.http.delete<{ deleted: boolean; id: string }>(`/v1/webhooks/${id}`);
+  }
+
+  listDeliveries(id: string): Promise<{ data: WebhookDelivery[] }> {
+    if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
+    return this.http.get<{ data: WebhookDelivery[] }>(`/v1/webhooks/${id}/deliveries`);
   }
 
   /**

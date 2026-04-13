@@ -185,9 +185,17 @@ var WebhooksResource = class {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
     return this.http.get("/v1/webhooks");
   }
+  update(id, params) {
+    if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
+    return this.http.patch(`/v1/webhooks/${id}`, params);
+  }
   delete(id) {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
     return this.http.delete(`/v1/webhooks/${id}`);
+  }
+  listDeliveries(id) {
+    if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
+    return this.http.get(`/v1/webhooks/${id}/deliveries`);
   }
   /**
    * Verify and parse a webhook event from an incoming request.

@@ -86,10 +86,33 @@ export type CreateWebhookParams = {
   events?: WebhookEventType[];
 };
 
+export type UpdateWebhookParams = {
+  url?: string;
+  events?: WebhookEventType[];
+  enabled?: boolean;
+};
+
 export type WebhookEndpoint = {
   id: string;
   url: string;
   events: WebhookEventType[];
   enabled: boolean;
   created_at: string;
+};
+
+export type WebhookDeliveryStatus = "pending" | "success" | "failed" | "retrying";
+
+export type WebhookDelivery = {
+  id: string;
+  webhookEndpointId: string;
+  paymentId: string | null;
+  eventType: string;
+  payload: Record<string, unknown>;
+  status: WebhookDeliveryStatus;
+  attempts: number;
+  lastAttemptAt: string | null;
+  nextAttemptAt: string | null;
+  responseStatus: number | null;
+  responseBody: string | null;
+  createdAt: string;
 };

@@ -125,6 +125,46 @@ declare class PaymentsResource {
     retrieve(id: string): Promise<Payment>;
 }
 
+type RefundStatus = "processing" | "succeeded" | "failed" | "requires_action";
+type RefundReason = "customer_request" | "duplicate" | "fraudulent" | "other";
+type Refund = {
+    id: string;
+    paymentId: string;
+    projectId: string;
+    mode: "sandbox" | "live";
+    amount: number;
+    currency: string;
+    reason: RefundReason;
+    status: RefundStatus;
+    providerRefundId: string | null;
+    failureReason: string | null;
+    notes: string | null;
+    mobileNumber: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+type CreateRefundParams = {
+    paymentId: string;
+    amount: number;
+    reason: RefundReason;
+    notes?: string;
+    /** Required by some Khalti configurations. */
+    mobileNumber?: string;
+};
+type ListRefundsParams = {
+    paymentId?: string;
+    limit?: number;
+    offset?: number;
+};
+
+declare class RefundsResource {
+    private readonly http;
+    constructor(http: HttpClient);
+    create(params: CreateRefundParams): Promise<Refund>;
+    list(params?: ListRefundsParams): Promise<PaginatedResponse<Refund>>;
+    retrieve(id: string): Promise<Refund>;
+}
+
 declare class WebhooksResource {
     private readonly http?;
     constructor(http?: HttpClient | undefined);
@@ -374,6 +414,7 @@ declare class PayBridge {
     static readonly webhooks: WebhooksResource;
     private _checkout?;
     private _payments?;
+    private _refunds?;
     private _webhooks?;
     private _plans?;
     private _customers?;
@@ -382,6 +423,7 @@ declare class PayBridge {
     constructor(config: PayBridgeConfig);
     get checkout(): CheckoutResource;
     get payments(): PaymentsResource;
+    get refunds(): RefundsResource;
     get webhooks(): WebhooksResource;
     get plans(): PlansResource;
     get customers(): CustomersResource;
@@ -419,6 +461,6 @@ declare class PayBridgeSignatureVerificationError extends PayBridgeError {
     constructor(message?: string);
 }
 
-declare const SDK_VERSION: "0.1.0";
+declare const SDK_VERSION: "1.3.0";
 
-export { type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutSession, type CreateCheckoutParams, type CreateCustomerParams, type CreatePlanParams, type CreateSubscriptionParams, type CreateWebhookParams, type IntervalUnit, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorCode, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentMethod, type PaymentStatus, type Plan, type Provider, SDK_VERSION, type Subscription, type SubscriptionStatus, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType };
+export { type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutSession, type CreateCheckoutParams, type CreateCustomerParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type IntervalUnit, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorCode, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentMethod, type PaymentStatus, type Plan, type Provider, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, type Subscription, type SubscriptionStatus, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType };

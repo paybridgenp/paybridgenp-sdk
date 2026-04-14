@@ -172,6 +172,27 @@ var PaymentsResource = class {
   }
 };
 
+// src/resources/refunds.ts
+var RefundsResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  create(params) {
+    return this.http.post("/v1/refunds", params);
+  }
+  list(params = {}) {
+    const qs = new URLSearchParams();
+    if (params.paymentId !== void 0) qs.set("paymentId", params.paymentId);
+    if (params.limit !== void 0) qs.set("limit", String(params.limit));
+    if (params.offset !== void 0) qs.set("offset", String(params.offset));
+    const query = qs.toString();
+    return this.http.get(`/v1/refunds${query ? `?${query}` : ""}`);
+  }
+  retrieve(id) {
+    return this.http.get(`/v1/refunds/${id}`);
+  }
+};
+
 // src/resources/webhooks.ts
 var WebhooksResource = class {
   constructor(http) {
@@ -350,6 +371,7 @@ var PayBridge = class {
   static webhooks = new WebhooksResource();
   _checkout;
   _payments;
+  _refunds;
   _webhooks;
   _plans;
   _customers;
@@ -363,6 +385,9 @@ var PayBridge = class {
   }
   get payments() {
     return this._payments ??= new PaymentsResource(this.http);
+  }
+  get refunds() {
+    return this._refunds ??= new RefundsResource(this.http);
   }
   get webhooks() {
     return this._webhooks ??= new WebhooksResource(this.http);
@@ -382,7 +407,7 @@ var PayBridge = class {
 };
 
 // src/index.ts
-var SDK_VERSION = "0.1.0";
+var SDK_VERSION = "1.3.0";
 export {
   PayBridge,
   PayBridgeAuthenticationError,

@@ -27,6 +27,14 @@ export type {
 } from "./types";
 
 export type {
+  RefundStatus,
+  RefundReason,
+  Refund,
+  CreateRefundParams,
+  ListRefundsParams,
+} from "./types/refunds";
+
+export type {
   // Plans
   IntervalUnit,
   OverdueAction,
@@ -55,4 +63,4 @@ export type {
   PaginatedBillingResponse,
 } from "./types/billing";
 
-export const SDK_VERSION = "0.1.0" as const;
+export const SDK_VERSION = "1.3.0" as const;

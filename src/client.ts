@@ -1,6 +1,7 @@
 import { HttpClient } from "./http";
 import { CheckoutResource } from "./resources/checkout";
 import { PaymentsResource } from "./resources/payments";
+import { RefundsResource } from "./resources/refunds";
 import { WebhooksResource } from "./resources/webhooks";
 import { PlansResource } from "./resources/plans";
 import { CustomersResource } from "./resources/customers";
@@ -16,6 +17,7 @@ export class PayBridge {
 
   private _checkout?: CheckoutResource;
   private _payments?: PaymentsResource;
+  private _refunds?: RefundsResource;
   private _webhooks?: WebhooksResource;
   private _plans?: PlansResource;
   private _customers?: CustomersResource;
@@ -32,6 +34,10 @@ export class PayBridge {
 
   get payments(): PaymentsResource {
     return (this._payments ??= new PaymentsResource(this.http));
+  }
+
+  get refunds(): RefundsResource {
+    return (this._refunds ??= new RefundsResource(this.http));
   }
 
   get webhooks(): WebhooksResource {

@@ -1,4 +1,4 @@
-export type Provider = "esewa" | "khalti" | "connectips" | "hamropay" | "imepay";
+export type Provider = "esewa" | "khalti" | "connectips" | "hamropay";
 
 export type PaymentStatus = "pending" | "processing" | "success" | "failed" | "cancelled" | "refunded";
 

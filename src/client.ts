@@ -7,6 +7,9 @@ import { PlansResource } from "./resources/plans";
 import { CustomersResource } from "./resources/customers";
 import { SubscriptionsResource } from "./resources/subscriptions";
 import { InvoicesResource } from "./resources/invoices";
+import { CouponsResource } from "./resources/coupons";
+import { PromotionCodesResource } from "./resources/promotionCodes";
+import { DunningResource } from "./resources/dunning";
 import type { PayBridgeConfig } from "./types";
 
 export class PayBridge {
@@ -23,6 +26,9 @@ export class PayBridge {
   private _customers?: CustomersResource;
   private _subscriptions?: SubscriptionsResource;
   private _invoices?: InvoicesResource;
+  private _coupons?: CouponsResource;
+  private _promotionCodes?: PromotionCodesResource;
+  private _dunning?: DunningResource;
 
   constructor(config: PayBridgeConfig) {
     this.http = new HttpClient(config);
@@ -58,5 +64,17 @@ export class PayBridge {
 
   get invoices(): InvoicesResource {
     return (this._invoices ??= new InvoicesResource(this.http));
+  }
+
+  get coupons(): CouponsResource {
+    return (this._coupons ??= new CouponsResource(this.http));
+  }
+
+  get promotionCodes(): PromotionCodesResource {
+    return (this._promotionCodes ??= new PromotionCodesResource(this.http));
+  }
+
+  get dunning(): DunningResource {
+    return (this._dunning ??= new DunningResource(this.http));
   }
 }

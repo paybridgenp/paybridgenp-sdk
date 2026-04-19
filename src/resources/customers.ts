@@ -7,6 +7,12 @@ import type {
   PaginatedBillingResponse,
 } from "../types/billing";
 
+export type AddCreditParams = {
+  /** Amount in paisa (NPR × 100). Use negative to deduct. */
+  amount: number;
+  note?: string | null;
+};
+
 export class CustomersResource {
   constructor(private readonly http: HttpClient) {}
 
@@ -35,5 +41,14 @@ export class CustomersResource {
 
   delete(id: string): Promise<{ deleted: boolean }> {
     return this.http.delete<{ deleted: boolean }>(`/v1/billing/customers/${id}`);
+  }
+
+  /**
+   * Add (or deduct, with negative amount) credits to a customer's balance.
+   * Credits are applied automatically against future invoices before payment.
+   * @param amount Amount in paisa (NPR × 100).
+   */
+  addCredit(id: string, params: AddCreditParams): Promise<BillingCustomer> {
+    return this.http.post<BillingCustomer>(`/v1/billing/customers/${id}/credit`, params);
   }
 }

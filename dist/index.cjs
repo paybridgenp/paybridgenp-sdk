@@ -345,6 +345,14 @@ var CustomersResource = class {
   delete(id) {
     return this.http.delete(`/v1/billing/customers/${id}`);
   }
+  /**
+   * Add (or deduct, with negative amount) credits to a customer's balance.
+   * Credits are applied automatically against future invoices before payment.
+   * @param amount Amount in paisa (NPR × 100).
+   */
+  addCredit(id, params) {
+    return this.http.post(`/v1/billing/customers/${id}/credit`, params);
+  }
 };
 
 // src/resources/subscriptions.ts
@@ -382,6 +390,87 @@ var SubscriptionsResource = class {
   changePlan(id, params) {
     return this.http.post(`/v1/billing/subscriptions/${id}/change-plan`, params);
   }
+  /**
+   * Preview the proration credit/debit amounts for a mid-period plan change
+   * without committing any changes. Use before calling `changePlan` with
+   * `prorationBehavior: "create_prorations"` to show the customer the net amount.
+   */
+  previewProration(id, newPlanId) {
+    return this.http.get(
+      `/v1/billing/subscriptions/${id}/preview-proration?newPlanId=${encodeURIComponent(newPlanId)}`
+    );
+  }
+  /**
+   * End a subscription's trial immediately. Generates the first paid invoice
+   * and emails it to the customer. Fires `subscription.trial_ended` webhook.
+   * Idempotent — subsequent calls return 409 `trial_not_active`.
+   */
+  endTrial(id) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/end-trial`, {});
+  }
+  /**
+   * Push the trial end date further into the future. Only valid while trial
+   * is still active. Re-arms the 3-day-before reminder. Fires
+   * `subscription.trial_extended` webhook.
+   */
+  extendTrial(id, params) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/extend-trial`, params);
+  }
+  /**
+   * Attach a coupon or promotion code to an existing subscription. Takes
+   * effect on the next invoice. Deactivates any prior active discount on
+   * this sub (partial unique index enforces one active discount per sub).
+   */
+  applyCoupon(id, params) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/apply-coupon`, params);
+  }
+  /** Remove the currently active discount. Future invoices are un-discounted. */
+  removeDiscount(id) {
+    return this.http.delete(`/v1/billing/subscriptions/${id}/discount`);
+  }
+  // ── Usage (metered billing) ─────────────────────────────────────────────────
+  /**
+   * Report a usage event for a metered subscription. Use `action: "increment"`
+   * (default) to add to the running total, or `action: "set"` for gauge-style
+   * metrics. Pass `idempotencyKey` to prevent double-counting.
+   */
+  reportUsage(id, params) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/usage`, {
+      quantity: params.quantity,
+      action: params.action,
+      recorded_at: params.recordedAt,
+      idempotency_key: params.idempotencyKey
+    });
+  }
+  /** Get the aggregated usage summary for the current billing period. */
+  getUsageSummary(id) {
+    return this.http.get(`/v1/billing/subscriptions/${id}/usage`);
+  }
+  /** List raw usage records for a subscription. */
+  listUsageRecords(id, limit) {
+    const qs = limit ? `?limit=${limit}` : "";
+    return this.http.get(`/v1/billing/subscriptions/${id}/usage/records${qs}`);
+  }
+  // ── Pending Invoice Items ───────────────────────────────────────────────────
+  /** List pending one-off charges that will be included in the next invoice. */
+  listInvoiceItems(id) {
+    return this.http.get(`/v1/billing/subscriptions/${id}/invoice-items`);
+  }
+  /**
+   * Add a one-off charge to a subscription. It will be included (and consumed)
+   * when the next invoice is generated.
+   */
+  createInvoiceItem(id, params) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/invoice-items`, params);
+  }
+  /** Delete a pending invoice item before it is invoiced. */
+  deleteInvoiceItem(subscriptionId, itemId) {
+    return this.http.delete(`/v1/billing/subscriptions/${subscriptionId}/invoice-items/${itemId}`);
+  }
+  /** Update the per-seat quantity on an active per_unit subscription. */
+  updateQuantity(id, quantity) {
+    return this.http.patch(`/v1/billing/subscriptions/${id}/quantity`, { quantity });
+  }
 };
 
 // src/resources/invoices.ts
@@ -407,6 +496,122 @@ var InvoicesResource = class {
   }
 };
 
+// src/resources/coupons.ts
+var CouponsResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  /**
+   * Create a reusable coupon. Discount params are immutable post-creation —
+   * replace by deactivating and creating a new one.
+   */
+  create(params) {
+    return this.http.post("/v1/billing/coupons", params);
+  }
+  list(params = {}) {
+    const qs = new URLSearchParams();
+    if (params.active !== void 0) qs.set("active", String(params.active));
+    if (params.limit !== void 0) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return this.http.get(
+      `/v1/billing/coupons${query ? `?${query}` : ""}`
+    );
+  }
+  get(id) {
+    return this.http.get(`/v1/billing/coupons/${id}`);
+  }
+  /** Deactivate. Soft-delete — historical redemptions remain intact. */
+  deactivate(id) {
+    return this.http.delete(`/v1/billing/coupons/${id}`);
+  }
+};
+
+// src/resources/promotionCodes.ts
+var PromotionCodesResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  /**
+   * Create a customer-facing promotion code that redeems a coupon. Code is
+   * auto-uppercased server-side and unique per merchant.
+   */
+  create(params) {
+    return this.http.post("/v1/billing/promotion-codes", params);
+  }
+  list(params = {}) {
+    const qs = new URLSearchParams();
+    if (params.couponId) qs.set("couponId", params.couponId);
+    if (params.active !== void 0) qs.set("active", String(params.active));
+    if (params.limit !== void 0) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return this.http.get(
+      `/v1/billing/promotion-codes${query ? `?${query}` : ""}`
+    );
+  }
+  get(id) {
+    return this.http.get(`/v1/billing/promotion-codes/${id}`);
+  }
+  /** Deactivate. Existing redemptions remain valid. */
+  deactivate(id) {
+    return this.http.patch(`/v1/billing/promotion-codes/${id}`, { active: false });
+  }
+  /**
+   * Read-only validation with discount preview. Safe to poll. Does NOT
+   * redeem the code.
+   */
+  validate(params) {
+    return this.http.post(
+      "/v1/billing/promotion-codes/validate",
+      params
+    );
+  }
+};
+
+// src/resources/dunning.ts
+var DunningResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  // ── Policies ───────────────────────────────────────────────────────────────
+  createPolicy(params) {
+    return this.http.post("/v1/billing/dunning/policies", params);
+  }
+  listPolicies() {
+    return this.http.get("/v1/billing/dunning/policies");
+  }
+  getPolicy(id) {
+    return this.http.get(`/v1/billing/dunning/policies/${id}`);
+  }
+  updatePolicy(id, params) {
+    return this.http.patch(`/v1/billing/dunning/policies/${id}`, params);
+  }
+  // ── Subscription policy assignment ────────────────────────────────────────
+  setSubscriptionPolicy(subscriptionId, policyId) {
+    return this.http.post(
+      `/v1/billing/dunning/subscriptions/${subscriptionId}/policy`,
+      { policyId }
+    );
+  }
+  // ── Invoice dunning actions ────────────────────────────────────────────────
+  getInvoiceStatus(invoiceId) {
+    return this.http.get(
+      `/v1/billing/dunning/invoices/${invoiceId}/dunning`
+    );
+  }
+  stopInvoice(invoiceId) {
+    return this.http.post(
+      `/v1/billing/dunning/invoices/${invoiceId}/dunning/stop`,
+      {}
+    );
+  }
+  retryInvoiceNow(invoiceId) {
+    return this.http.post(
+      `/v1/billing/dunning/invoices/${invoiceId}/dunning/retry-now`,
+      {}
+    );
+  }
+};
+
 // src/client.ts
 var PayBridge = class {
   http;
@@ -420,6 +625,9 @@ var PayBridge = class {
   _customers;
   _subscriptions;
   _invoices;
+  _coupons;
+  _promotionCodes;
+  _dunning;
   constructor(config) {
     this.http = new HttpClient(config);
   }
@@ -446,6 +654,15 @@ var PayBridge = class {
   }
   get invoices() {
     return this._invoices ??= new InvoicesResource(this.http);
+  }
+  get coupons() {
+    return this._coupons ??= new CouponsResource(this.http);
+  }
+  get promotionCodes() {
+    return this._promotionCodes ??= new PromotionCodesResource(this.http);
+  }
+  get dunning() {
+    return this._dunning ??= new DunningResource(this.http);
   }
 };
 

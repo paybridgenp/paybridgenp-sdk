@@ -1,4 +1,4 @@
-type Provider = "esewa" | "khalti" | "connectips" | "hamropay";
+type Provider = "esewa" | "khalti" | "connectips" | "hamropay" | "fonepay";
 type PaymentStatus = "pending" | "processing" | "success" | "failed" | "cancelled" | "refunded";
 type PayBridgeConfig = {
     apiKey: string;

@@ -25,6 +25,7 @@ export type CreateCheckoutParams = {
     email?: string;
     phone?: string;
   };
+  collectAddress?: boolean;
 };
 
 export type PaymentMethod =
@@ -72,7 +73,7 @@ export type PaginatedResponse<T> = {
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
 
-export type WebhookEventType = "payment.succeeded" | "payment.failed" | "payment.cancelled";
+export type WebhookEventType = "payment.succeeded" | "payment.failed" | "payment.cancelled" | "payment.refunded" | "payment_link.paid";
 
 export type WebhookEvent<T = unknown> = {
   id: string;

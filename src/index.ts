@@ -35,6 +35,12 @@ export type {
 } from "./types/refunds";
 
 export type {
+  FonepayQrCustomer,
+  CreateFonepayQrParams,
+  FonepayQrSession,
+} from "./types/qr";
+
+export type {
   // Plans
   IntervalUnit,
   OverdueAction,
@@ -63,4 +69,4 @@ export type {
   PaginatedBillingResponse,
 } from "./types/billing";
 
-export const SDK_VERSION = "1.3.0" as const;
+export const SDK_VERSION = "1.6.0" as const;

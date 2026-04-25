@@ -19,6 +19,7 @@ type CreateCheckoutParams = {
         email?: string;
         phone?: string;
     };
+    collectAddress?: boolean;
 };
 type PaymentMethod = {
     type: "redirect";
@@ -60,7 +61,7 @@ type PaginatedResponse<T> = {
     data: T[];
     meta: PaginationMeta;
 };
-type WebhookEventType = "payment.succeeded" | "payment.failed" | "payment.cancelled";
+type WebhookEventType = "payment.succeeded" | "payment.failed" | "payment.cancelled" | "payment.refunded" | "payment_link.paid";
 type WebhookEvent<T = unknown> = {
     id: string;
     type: WebhookEventType;
@@ -766,6 +767,49 @@ declare class DunningResource {
     }>;
 }
 
+type FonepayQrCustomer = {
+    name: string;
+    email: string;
+    phone?: string;
+    address?: {
+        line1: string;
+        city: string;
+        line2?: string;
+        state?: string;
+        postalCode?: string;
+        country?: string;
+    };
+};
+type CreateFonepayQrParams = {
+    amount: number;
+    currency?: "NPR";
+    customer: FonepayQrCustomer;
+    metadata?: Metadata;
+};
+type FonepayQrSession = {
+    id: string;
+    amount: number;
+    currency: string;
+    provider: "fonepay";
+    status: "initiated";
+    qr_message: string;
+    qr_image: string;
+    events_url: string;
+    expires_at: string;
+};
+
+declare class QrResource {
+    private readonly http;
+    constructor(http: HttpClient);
+    /**
+     * Create a Fonepay Direct-QR session. Returns the raw QR string, a base64
+     * PNG image, and a per-session SSE URL for real-time payment events.
+     *
+     * Premium feature — requires the merchant to be on the Premium plan.
+     */
+    fonepay(params: CreateFonepayQrParams): Promise<FonepayQrSession>;
+}
+
 declare class PayBridge {
     private readonly http;
     /** Static webhook utility — no instance required for signature verification. */
@@ -781,6 +825,7 @@ declare class PayBridge {
     private _coupons?;
     private _promotionCodes?;
     private _dunning?;
+    private _qr?;
     constructor(config: PayBridgeConfig);
     get checkout(): CheckoutResource;
     get payments(): PaymentsResource;
@@ -793,6 +838,11 @@ declare class PayBridge {
     get coupons(): CouponsResource;
     get promotionCodes(): PromotionCodesResource;
     get dunning(): DunningResource;
+    /**
+     * Direct-QR API for Fonepay. Premium feature — generates an embeddable QR
+     * + SSE event stream so developers can build their own checkout UI.
+     */
+    get qr(): QrResource;
 }
 
 type PayBridgeErrorCode = "authentication_error" | "permission_error" | "invalid_request_error" | "not_found_error" | "rate_limit_error" | "api_error" | "connection_error" | "signature_verification_error";
@@ -825,6 +875,6 @@ declare class PayBridgeSignatureVerificationError extends PayBridgeError {
     constructor(message?: string);
 }
 
-declare const SDK_VERSION: "1.3.0";
+declare const SDK_VERSION: "1.6.0";
 
-export { type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutSession, type CreateCheckoutParams, type CreateCustomerParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type IntervalUnit, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorCode, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentMethod, type PaymentStatus, type Plan, type Provider, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, type Subscription, type SubscriptionStatus, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType };
+export { type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutSession, type CreateCheckoutParams, type CreateCustomerParams, type CreateFonepayQrParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type FonepayQrCustomer, type FonepayQrSession, type IntervalUnit, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorCode, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentMethod, type PaymentStatus, type Plan, type Provider, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, type Subscription, type SubscriptionStatus, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType };

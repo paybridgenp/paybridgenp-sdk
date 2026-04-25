@@ -10,6 +10,7 @@ import { InvoicesResource } from "./resources/invoices";
 import { CouponsResource } from "./resources/coupons";
 import { PromotionCodesResource } from "./resources/promotionCodes";
 import { DunningResource } from "./resources/dunning";
+import { QrResource } from "./resources/qr";
 import type { PayBridgeConfig } from "./types";
 
 export class PayBridge {
@@ -29,6 +30,7 @@ export class PayBridge {
   private _coupons?: CouponsResource;
   private _promotionCodes?: PromotionCodesResource;
   private _dunning?: DunningResource;
+  private _qr?: QrResource;
 
   constructor(config: PayBridgeConfig) {
     this.http = new HttpClient(config);
@@ -76,5 +78,13 @@ export class PayBridge {
 
   get dunning(): DunningResource {
     return (this._dunning ??= new DunningResource(this.http));
+  }
+
+  /**
+   * Direct-QR API for Fonepay. Premium feature — generates an embeddable QR
+   * + SSE event stream so developers can build their own checkout UI.
+   */
+  get qr(): QrResource {
+    return (this._qr ??= new QrResource(this.http));
   }
 }

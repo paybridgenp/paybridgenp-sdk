@@ -569,6 +569,22 @@ var DunningResource = class {
   }
 };
 
+// src/resources/qr.ts
+var QrResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  /**
+   * Create a Fonepay Direct-QR session. Returns the raw QR string, a base64
+   * PNG image, and a per-session SSE URL for real-time payment events.
+   *
+   * Premium feature — requires the merchant to be on the Premium plan.
+   */
+  fonepay(params) {
+    return this.http.post("/v1/qr/fonepay", params);
+  }
+};
+
 // src/client.ts
 var PayBridge = class {
   http;
@@ -585,6 +601,7 @@ var PayBridge = class {
   _coupons;
   _promotionCodes;
   _dunning;
+  _qr;
   constructor(config) {
     this.http = new HttpClient(config);
   }
@@ -621,10 +638,17 @@ var PayBridge = class {
   get dunning() {
     return this._dunning ??= new DunningResource(this.http);
   }
+  /**
+   * Direct-QR API for Fonepay. Premium feature — generates an embeddable QR
+   * + SSE event stream so developers can build their own checkout UI.
+   */
+  get qr() {
+    return this._qr ??= new QrResource(this.http);
+  }
 };
 
 // src/index.ts
-var SDK_VERSION = "1.3.0";
+var SDK_VERSION = "1.6.0";
 export {
   PayBridge,
   PayBridgeAuthenticationError,

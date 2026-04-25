@@ -7,9 +7,11 @@ type PayBridgeConfig = {
     maxRetries?: number;
 };
 type Metadata = Record<string, unknown>;
+type CheckoutFlow = "hosted" | "redirect";
 type CreateCheckoutParams = {
     amount: number;
     provider?: Provider;
+    flow?: CheckoutFlow;
     returnUrl: string;
     cancelUrl?: string;
     currency?: string;
@@ -21,18 +23,11 @@ type CreateCheckoutParams = {
     };
     collectAddress?: boolean;
 };
-type PaymentMethod = {
-    type: "redirect";
-    url: string;
-} | {
-    type: "form_post";
-    url: string;
-    fields: Record<string, string>;
-};
 type CheckoutSession = {
     id: string;
     checkout_url: string;
-    payment_method?: PaymentMethod;
+    flow: CheckoutFlow;
+    provider: Provider | null;
     expires_at: string;
 };
 type Payment = {
@@ -877,4 +872,4 @@ declare class PayBridgeSignatureVerificationError extends PayBridgeError {
 
 declare const SDK_VERSION: "1.6.0";
 
-export { type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutSession, type CreateCheckoutParams, type CreateCustomerParams, type CreateFonepayQrParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type FonepayQrCustomer, type FonepayQrSession, type IntervalUnit, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorCode, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentMethod, type PaymentStatus, type Plan, type Provider, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, type Subscription, type SubscriptionStatus, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType };
+export { type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutFlow, type CheckoutSession, type CreateCheckoutParams, type CreateCustomerParams, type CreateFonepayQrParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type FonepayQrCustomer, type FonepayQrSession, type IntervalUnit, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorCode, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentStatus, type Plan, type Provider, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, type Subscription, type SubscriptionStatus, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType };

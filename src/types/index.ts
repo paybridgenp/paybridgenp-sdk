@@ -13,10 +13,20 @@ export type Metadata = Record<string, unknown>;
 
 // ── Checkout ──────────────────────────────────────────────────────────────────
 
+export type CheckoutFlow = "hosted" | "redirect";
+
 export type CreateCheckoutParams = {
   amount: number;          // in paisa (NPR × 100)
-  provider?: Provider;     // omit to let the customer pick on the hosted checkout page
+  provider?: Provider;     // omit to let the customer pick on the hosted page
+  // "hosted" (default) renders the PayBridge picker, with `provider`
+  // pre-selected if set. "redirect" skips the picker and 302s straight to the
+  // chosen provider — `provider` is required.
+  flow?: CheckoutFlow;
   returnUrl: string;
+  // Where the customer lands when they cancel (at the provider, or via the
+  // "Cancel" link on the hosted picker). Optional — when omitted, cancellations
+  // fall back to `returnUrl?status=cancelled`, and the picker hides its
+  // Cancel link entirely.
   cancelUrl?: string;
   currency?: string;
   metadata?: Metadata;
@@ -28,14 +38,11 @@ export type CreateCheckoutParams = {
   collectAddress?: boolean;
 };
 
-export type PaymentMethod =
-  | { type: "redirect"; url: string }
-  | { type: "form_post"; url: string; fields: Record<string, string> };
-
 export type CheckoutSession = {
   id: string;
   checkout_url: string;
-  payment_method?: PaymentMethod;
+  flow: CheckoutFlow;
+  provider: Provider | null;
   expires_at: string;
 };
 

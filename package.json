@@ -1,7 +1,7 @@
 {
   "name": "@paybridge-np/sdk",
-  "version": "2.0.0",
-  "description": "Official TypeScript SDK for the PayBridgeNP payment gateway — accept eSewa, Khalti, ConnectIPS, and FonePay through a single API",
+  "version": "2.1.0",
+  "description": "Official TypeScript SDK for the PayBridgeNP payment gateway — accept eSewa, Khalti, ConnectIPS, and Fonepay through a single API",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

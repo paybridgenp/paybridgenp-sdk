@@ -34,8 +34,24 @@ export type CreateCheckoutParams = {
     name?: string;
     email?: string;
     phone?: string;
+    address?: CustomerAddress;
   };
   collectAddress?: boolean;
+};
+
+/**
+ * Shipping/billing address attached to a checkout. `line1` and `city` are
+ * required; the rest are optional. Fields beyond ~100 chars are truncated
+ * server-side. Country is freeform — store ISO codes if you need normalised
+ * values downstream.
+ */
+export type CustomerAddress = {
+  line1: string;
+  line2?: string;
+  city: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
 };
 
 export type CheckoutSession = {

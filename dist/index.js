@@ -153,6 +153,25 @@ var CheckoutResource = class {
   create(params) {
     return this.http.post("/v1/checkout", params);
   }
+  /**
+   * Expire a checkout session so it can no longer accept payment.
+   *
+   * Use this when you mint a fresh checkout session for a logical purchase
+   * that already had one outstanding (a customer requesting a new payment
+   * link, your reminder system regenerating expired URLs, etc.). Without
+   * explicitly expiring the old session, its URL remains payable until the
+   * 30-minute TTL elapses, which can let a customer who reloads the old tab
+   * pay twice. Mirrors Stripe's `POST /checkout/sessions/{id}/expire`.
+   *
+   * Idempotent: calling on an already-terminal session is a no-op that
+   * returns the current row state without error.
+   */
+  expire(id) {
+    return this.http.post(
+      `/v1/checkout/${encodeURIComponent(id)}/expire`,
+      {}
+    );
+  }
 };
 
 // src/resources/payments.ts

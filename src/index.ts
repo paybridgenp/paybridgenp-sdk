@@ -16,6 +16,8 @@ export type {
   CheckoutFlow,
   CreateCheckoutParams,
   CheckoutSession,
+  CheckoutSessionStatus,
+  ExpiredCheckoutSession,
   Payment,
   ListPaymentsParams,
   PaginatedResponse,

@@ -34,7 +34,11 @@ const session = await client.checkout.create({
 });
 
 // Redirect customer to hosted checkout
-// session.checkout_url => https://paybridgenp.com/checkout/cs_xxx
+// session.checkout_url => https://checkout.paybridgenp.com/checkout/cs_xxx
+
+// Expire a previously-created session so its URL stops being payable
+// (use when you mint a fresh session for the same purchase).
+await client.checkout.expire("cs_xxx");
 ```
 
 ## Payments

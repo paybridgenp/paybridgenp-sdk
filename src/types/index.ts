@@ -62,6 +62,28 @@ export type CheckoutSession = {
   expires_at: string;
 };
 
+export type CheckoutSessionStatus =
+  | "pending"
+  | "initiated"
+  | "success"
+  | "failed"
+  | "cancelled"
+  | "expired";
+
+/**
+ * Returned by `client.checkout.expire(id)`. Same identifying fields as
+ * `CheckoutSession` minus `checkout_url` (the session is no longer payable),
+ * plus a `status` field reflecting the current row state. Idempotent — if
+ * the session was already terminal, `status` echoes that prior state.
+ */
+export type ExpiredCheckoutSession = {
+  id: string;
+  status: CheckoutSessionStatus;
+  flow: CheckoutFlow;
+  provider: Provider | null;
+  expires_at: string;
+};
+
 // ── Payments ──────────────────────────────────────────────────────────────────
 
 export type Payment = {

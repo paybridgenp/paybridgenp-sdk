@@ -45,6 +45,20 @@ type CheckoutSession = {
     provider: Provider | null;
     expires_at: string;
 };
+type CheckoutSessionStatus = "pending" | "initiated" | "success" | "failed" | "cancelled" | "expired";
+/**
+ * Returned by `client.checkout.expire(id)`. Same identifying fields as
+ * `CheckoutSession` minus `checkout_url` (the session is no longer payable),
+ * plus a `status` field reflecting the current row state. Idempotent — if
+ * the session was already terminal, `status` echoes that prior state.
+ */
+type ExpiredCheckoutSession = {
+    id: string;
+    status: CheckoutSessionStatus;
+    flow: CheckoutFlow;
+    provider: Provider | null;
+    expires_at: string;
+};
 type Payment = {
     id: string;
     project_id: string;
@@ -127,6 +141,20 @@ declare class CheckoutResource {
     private readonly http;
     constructor(http: HttpClient);
     create(params: CreateCheckoutParams): Promise<CheckoutSession>;
+    /**
+     * Expire a checkout session so it can no longer accept payment.
+     *
+     * Use this when you mint a fresh checkout session for a logical purchase
+     * that already had one outstanding (a customer requesting a new payment
+     * link, your reminder system regenerating expired URLs, etc.). Without
+     * explicitly expiring the old session, its URL remains payable until the
+     * 30-minute TTL elapses, which can let a customer who reloads the old tab
+     * pay twice. Mirrors Stripe's `POST /checkout/sessions/{id}/expire`.
+     *
+     * Idempotent: calling on an already-terminal session is a no-op that
+     * returns the current row state without error.
+     */
+    expire(id: string): Promise<ExpiredCheckoutSession>;
 }
 
 declare class PaymentsResource {
@@ -887,4 +915,4 @@ declare class PayBridgeSignatureVerificationError extends PayBridgeError {
 
 declare const SDK_VERSION: "1.6.0";
 
-export { type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutFlow, type CheckoutSession, type CreateCheckoutParams, type CreateCustomerParams, type CreateFonepayQrParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type FonepayQrCustomer, type FonepayQrSession, type IntervalUnit, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorCode, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentStatus, type Plan, type Provider, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, type Subscription, type SubscriptionStatus, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType };
+export { type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, type CreateCheckoutParams, type CreateCustomerParams, type CreateFonepayQrParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type ExpiredCheckoutSession, type FonepayQrCustomer, type FonepayQrSession, type IntervalUnit, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorCode, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentStatus, type Plan, type Provider, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, type Subscription, type SubscriptionStatus, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType };

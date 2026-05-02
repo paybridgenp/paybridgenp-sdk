@@ -1,13 +1,27 @@
 export { PayBridge } from "./client";
 export {
+  // v3 typed error hierarchy — branch with `instanceof`.
   PayBridgeError,
+  AuthenticationError,
+  AccountError,
+  PermissionError,
+  InvalidRequestError,
+  IdempotencyError,
+  RateLimitError,
+  ApiError,
+  ConnectionError,
+  SignatureVerificationError,
+  // Pre-3.0 names kept as deprecated aliases.
   PayBridgeAuthenticationError,
   PayBridgeNotFoundError,
   PayBridgeInvalidRequestError,
   PayBridgeRateLimitError,
   PayBridgeSignatureVerificationError,
+  parseErrorResponse,
 } from "./errors";
-export type { PayBridgeErrorCode } from "./errors";
+export type { PayBridgeErrorType, SuspensionDetail, PauseDetail } from "./errors";
+/** @deprecated use `PayBridgeErrorType` */
+export type { PayBridgeErrorType as PayBridgeErrorCode } from "./errors";
 export type {
   PayBridgeConfig,
   Provider,
@@ -71,4 +85,4 @@ export type {
   PaginatedBillingResponse,
 } from "./types/billing";
 
-export const SDK_VERSION = "1.6.0" as const;
+export const SDK_VERSION = "3.0.0" as const;

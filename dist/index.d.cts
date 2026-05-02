@@ -40,6 +40,12 @@ type CustomerAddress = {
 };
 type CheckoutSession = {
     id: string;
+    /**
+     * `true` when created with a live (`sk_live_`) key, `false` for sandbox.
+     * Mirrors Stripe's `livemode` so integrations can confirm the environment
+     * without inspecting which key was used.
+     */
+    livemode: boolean;
     checkout_url: string;
     flow: CheckoutFlow;
     provider: Provider | null;
@@ -61,6 +67,8 @@ type ExpiredCheckoutSession = {
 };
 type Payment = {
     id: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
     project_id: string;
     checkout_session_id: string | null;
     amount: number;
@@ -90,6 +98,8 @@ type WebhookEvent<T = unknown> = {
     id: string;
     type: WebhookEventType;
     created: number;
+    /** `true` for events from live keys, `false` for sandbox. */
+    livemode: boolean;
     data: T;
 };
 type CreateWebhookParams = {
@@ -103,6 +113,8 @@ type UpdateWebhookParams = {
 };
 type WebhookEndpoint = {
     id: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
     url: string;
     events: WebhookEventType[];
     enabled: boolean;
@@ -168,6 +180,8 @@ type RefundStatus = "processing" | "succeeded" | "failed" | "requires_action";
 type RefundReason = "customer_request" | "duplicate" | "fraudulent" | "other";
 type Refund = {
     id: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
     paymentId: string;
     projectId: string;
     mode: "sandbox" | "live";
@@ -269,6 +283,8 @@ type ListPlansParams = {
 };
 type Plan = {
     id: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
     merchantId: string;
     projectId: string;
     mode: string;
@@ -314,6 +330,8 @@ type ListCustomersParams = {
 };
 type BillingCustomer = {
     id: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
     merchantId: string;
     projectId: string;
     mode: string;
@@ -474,6 +492,8 @@ type ChangePlanParams = {
 };
 type Subscription = {
     id: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
     merchantId: string;
     projectId: string;
     mode: string;
@@ -548,6 +568,8 @@ type ListInvoicesParams = {
 };
 type Invoice = {
     id: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
     merchantId: string;
     projectId: string;
     mode: string;
@@ -883,36 +905,98 @@ declare class PayBridge {
     get qr(): QrResource;
 }
 
-type PayBridgeErrorCode = "authentication_error" | "permission_error" | "invalid_request_error" | "not_found_error" | "rate_limit_error" | "api_error" | "connection_error" | "signature_verification_error";
+type PayBridgeErrorType = "authentication_error" | "account_error" | "permission_error" | "invalid_request_error" | "idempotency_error" | "rate_limit_error" | "api_error" | "connection_error" | "signature_verification_error";
+/** Shape of `error.suspension` returned with `account_suspended`. */
+type SuspensionDetail = {
+    suspended_at?: string;
+    reason?: string | null;
+};
+/** Shape of `error.pause` returned with `token_paused`. */
+type PauseDetail = {
+    paused_at?: string;
+    reason?: string | null;
+};
 declare class PayBridgeError extends Error {
+    /** HTTP status code, or 0 for connection / signature errors. */
     readonly statusCode: number;
-    readonly code: PayBridgeErrorCode;
+    /** Broad category — matches `error.type` from the API. */
+    readonly type: PayBridgeErrorType;
+    /** Specific identifier — matches `error.code` from the API (may be undefined). */
+    readonly code: string | undefined;
+    /** Request ID — matches `error.request_id` and the `X-Request-Id` header. */
+    readonly requestId: string | undefined;
+    /** Full parsed JSON body of the error response. */
     readonly raw: Record<string, unknown> | null;
-    constructor(message: string, statusCode: number, code: PayBridgeErrorCode, raw?: Record<string, unknown> | null);
+    constructor(message: string, statusCode: number, type: PayBridgeErrorType, options?: {
+        code?: string;
+        requestId?: string;
+        raw?: Record<string, unknown> | null;
+    });
     toJSON(): {
         name: string;
         message: string;
-        code: PayBridgeErrorCode;
+        type: PayBridgeErrorType;
+        code: string | undefined;
         statusCode: number;
+        requestId: string | undefined;
         raw: Record<string, unknown> | null;
     };
 }
-declare class PayBridgeAuthenticationError extends PayBridgeError {
-    constructor(message: string, raw?: Record<string, unknown>);
+declare class AuthenticationError extends PayBridgeError {
+    constructor(message: string, opts?: ConstructorParameters<typeof PayBridgeError>[3]);
 }
-declare class PayBridgeNotFoundError extends PayBridgeError {
-    constructor(message: string, raw?: Record<string, unknown>);
+declare class AccountError extends PayBridgeError {
+    /** Set when `code === "account_suspended"`. */
+    readonly suspension: SuspensionDetail | undefined;
+    /** Set when `code === "token_paused"`. */
+    readonly pause: PauseDetail | undefined;
+    constructor(message: string, statusCode: number, opts?: ConstructorParameters<typeof PayBridgeError>[3] & {
+        suspension?: SuspensionDetail;
+        pause?: PauseDetail;
+    });
 }
-declare class PayBridgeInvalidRequestError extends PayBridgeError {
-    constructor(message: string, raw?: Record<string, unknown>);
+declare class PermissionError extends PayBridgeError {
+    constructor(message: string, statusCode?: number, opts?: ConstructorParameters<typeof PayBridgeError>[3]);
 }
-declare class PayBridgeRateLimitError extends PayBridgeError {
-    constructor(message: string, raw?: Record<string, unknown>);
+declare class InvalidRequestError extends PayBridgeError {
+    constructor(message: string, statusCode?: number, opts?: ConstructorParameters<typeof PayBridgeError>[3]);
 }
-declare class PayBridgeSignatureVerificationError extends PayBridgeError {
+declare class IdempotencyError extends PayBridgeError {
+    constructor(message: string, opts?: ConstructorParameters<typeof PayBridgeError>[3]);
+}
+declare class RateLimitError extends PayBridgeError {
+    /** From `Retry-After` header, in seconds. Undefined if header was absent. */
+    readonly retryAfter: number | undefined;
+    constructor(message: string, opts?: ConstructorParameters<typeof PayBridgeError>[3] & {
+        retryAfter?: number;
+    });
+}
+declare class ApiError extends PayBridgeError {
+    constructor(message: string, statusCode?: number, opts?: ConstructorParameters<typeof PayBridgeError>[3]);
+}
+declare class ConnectionError extends PayBridgeError {
+    constructor(message: string);
+}
+declare class SignatureVerificationError extends PayBridgeError {
     constructor(message?: string);
 }
+/** @deprecated use `AuthenticationError` */
+declare const PayBridgeAuthenticationError: typeof AuthenticationError;
+/** @deprecated use `InvalidRequestError` */
+declare const PayBridgeInvalidRequestError: typeof InvalidRequestError;
+/** @deprecated use `RateLimitError` */
+declare const PayBridgeRateLimitError: typeof RateLimitError;
+/** @deprecated use `SignatureVerificationError` */
+declare const PayBridgeSignatureVerificationError: typeof SignatureVerificationError;
+/** @deprecated 404 is now an `InvalidRequestError` (Stripe convention) — check `statusCode === 404` if you need to distinguish */
+declare const PayBridgeNotFoundError: typeof InvalidRequestError;
+/**
+ * Parse an error response body and instantiate the right typed error.
+ * Accepts the v3 nested envelope; tolerates the legacy flat shape so
+ * old API responses don't blow up SDK consumers during migration.
+ */
+declare function parseErrorResponse(statusCode: number, body: Record<string, unknown> | null, retryAfterHeader: string | null): PayBridgeError;
 
-declare const SDK_VERSION: "1.6.0";
+declare const SDK_VERSION: "3.0.0";
 
-export { type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, type CreateCheckoutParams, type CreateCustomerParams, type CreateFonepayQrParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type ExpiredCheckoutSession, type FonepayQrCustomer, type FonepayQrSession, type IntervalUnit, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorCode, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentStatus, type Plan, type Provider, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, type Subscription, type SubscriptionStatus, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType };
+export { AccountError, ApiError, AuthenticationError, type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, ConnectionError, type CreateCheckoutParams, type CreateCustomerParams, type CreateFonepayQrParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type ExpiredCheckoutSession, type FonepayQrCustomer, type FonepayQrSession, IdempotencyError, type IntervalUnit, InvalidRequestError, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseDetail, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorType as PayBridgeErrorCode, type PayBridgeErrorType, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentStatus, PermissionError, type Plan, type Provider, RateLimitError, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, SignatureVerificationError, type Subscription, type SubscriptionStatus, type SuspensionDetail, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType, parseErrorResponse };

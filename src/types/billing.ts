@@ -45,6 +45,8 @@ export type ListPlansParams = {
 
 export type Plan = {
   id: string;
+  /** `true` when created with a live key, `false` for sandbox. */
+  livemode: boolean;
   merchantId: string;
   projectId: string;
   mode: string;
@@ -96,6 +98,8 @@ export type ListCustomersParams = {
 
 export type BillingCustomer = {
   id: string;
+  /** `true` when created with a live key, `false` for sandbox. */
+  livemode: boolean;
   merchantId: string;
   projectId: string;
   mode: string;
@@ -295,6 +299,8 @@ export type ChangePlanParams = {
 
 export type Subscription = {
   id: string;
+  /** `true` when created with a live key, `false` for sandbox. */
+  livemode: boolean;
   merchantId: string;
   projectId: string;
   mode: string;
@@ -383,6 +389,8 @@ export type ListInvoicesParams = {
 
 export type Invoice = {
   id: string;
+  /** `true` when created with a live key, `false` for sandbox. */
+  livemode: boolean;
   merchantId: string;
   projectId: string;
   mode: string;

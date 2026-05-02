@@ -30,6 +30,12 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
+  AccountError: () => AccountError,
+  ApiError: () => ApiError,
+  AuthenticationError: () => AuthenticationError,
+  ConnectionError: () => ConnectionError,
+  IdempotencyError: () => IdempotencyError,
+  InvalidRequestError: () => InvalidRequestError,
   PayBridge: () => PayBridge,
   PayBridgeAuthenticationError: () => PayBridgeAuthenticationError,
   PayBridgeError: () => PayBridgeError,
@@ -37,71 +43,156 @@ __export(index_exports, {
   PayBridgeNotFoundError: () => PayBridgeNotFoundError,
   PayBridgeRateLimitError: () => PayBridgeRateLimitError,
   PayBridgeSignatureVerificationError: () => PayBridgeSignatureVerificationError,
-  SDK_VERSION: () => SDK_VERSION
+  PermissionError: () => PermissionError,
+  RateLimitError: () => RateLimitError,
+  SDK_VERSION: () => SDK_VERSION,
+  SignatureVerificationError: () => SignatureVerificationError,
+  parseErrorResponse: () => parseErrorResponse
 });
 module.exports = __toCommonJS(index_exports);
 
 // src/errors.ts
 var PayBridgeError = class extends Error {
+  /** HTTP status code, or 0 for connection / signature errors. */
   statusCode;
+  /** Broad category — matches `error.type` from the API. */
+  type;
+  /** Specific identifier — matches `error.code` from the API (may be undefined). */
   code;
+  /** Request ID — matches `error.request_id` and the `X-Request-Id` header. */
+  requestId;
+  /** Full parsed JSON body of the error response. */
   raw;
-  constructor(message, statusCode, code, raw = null) {
+  constructor(message, statusCode, type, options = {}) {
     super(message);
     this.name = "PayBridgeError";
     this.statusCode = statusCode;
-    this.code = code;
-    this.raw = raw;
+    this.type = type;
+    this.code = options.code;
+    this.requestId = options.requestId;
+    this.raw = options.raw ?? null;
     Object.setPrototypeOf(this, new.target.prototype);
   }
   toJSON() {
-    return { name: this.name, message: this.message, code: this.code, statusCode: this.statusCode, raw: this.raw };
+    return {
+      name: this.name,
+      message: this.message,
+      type: this.type,
+      code: this.code,
+      statusCode: this.statusCode,
+      requestId: this.requestId,
+      raw: this.raw
+    };
   }
 };
-var PayBridgeAuthenticationError = class extends PayBridgeError {
-  constructor(message, raw) {
-    super(message, 401, "authentication_error", raw ?? null);
-    this.name = "PayBridgeAuthenticationError";
+var AuthenticationError = class extends PayBridgeError {
+  constructor(message, opts = {}) {
+    super(message, 401, "authentication_error", opts);
+    this.name = "AuthenticationError";
   }
 };
-var PayBridgeNotFoundError = class extends PayBridgeError {
-  constructor(message, raw) {
-    super(message, 404, "not_found_error", raw ?? null);
-    this.name = "PayBridgeNotFoundError";
+var AccountError = class extends PayBridgeError {
+  /** Set when `code === "account_suspended"`. */
+  suspension;
+  /** Set when `code === "token_paused"`. */
+  pause;
+  constructor(message, statusCode, opts = {}) {
+    super(message, statusCode, "account_error", opts);
+    this.name = "AccountError";
+    this.suspension = opts.suspension;
+    this.pause = opts.pause;
   }
 };
-var PayBridgeInvalidRequestError = class extends PayBridgeError {
-  constructor(message, raw) {
-    super(message, 400, "invalid_request_error", raw ?? null);
-    this.name = "PayBridgeInvalidRequestError";
+var PermissionError = class extends PayBridgeError {
+  constructor(message, statusCode = 403, opts = {}) {
+    super(message, statusCode, "permission_error", opts);
+    this.name = "PermissionError";
   }
 };
-var PayBridgeRateLimitError = class extends PayBridgeError {
-  constructor(message, raw) {
-    super(message, 429, "rate_limit_error", raw ?? null);
-    this.name = "PayBridgeRateLimitError";
+var InvalidRequestError = class extends PayBridgeError {
+  constructor(message, statusCode = 400, opts = {}) {
+    super(message, statusCode, "invalid_request_error", opts);
+    this.name = "InvalidRequestError";
   }
 };
-var PayBridgeSignatureVerificationError = class extends PayBridgeError {
+var IdempotencyError = class extends PayBridgeError {
+  constructor(message, opts = {}) {
+    super(message, 409, "idempotency_error", opts);
+    this.name = "IdempotencyError";
+  }
+};
+var RateLimitError = class extends PayBridgeError {
+  /** From `Retry-After` header, in seconds. Undefined if header was absent. */
+  retryAfter;
+  constructor(message, opts = {}) {
+    super(message, 429, "rate_limit_error", opts);
+    this.name = "RateLimitError";
+    this.retryAfter = opts.retryAfter;
+  }
+};
+var ApiError = class extends PayBridgeError {
+  constructor(message, statusCode = 500, opts = {}) {
+    super(message, statusCode, "api_error", opts);
+    this.name = "ApiError";
+  }
+};
+var ConnectionError = class extends PayBridgeError {
+  constructor(message) {
+    super(message, 0, "connection_error");
+    this.name = "ConnectionError";
+  }
+};
+var SignatureVerificationError = class extends PayBridgeError {
   constructor(message = "Webhook signature verification failed") {
     super(message, 0, "signature_verification_error");
-    this.name = "PayBridgeSignatureVerificationError";
+    this.name = "SignatureVerificationError";
   }
 };
-function createError(message, statusCode, raw) {
-  switch (statusCode) {
-    case 401:
-      return new PayBridgeAuthenticationError(message, raw ?? void 0);
-    case 404:
-      return new PayBridgeNotFoundError(message, raw ?? void 0);
-    case 400:
-    case 422:
-      return new PayBridgeInvalidRequestError(message, raw ?? void 0);
-    case 429:
-      return new PayBridgeRateLimitError(message, raw ?? void 0);
-    default:
-      return new PayBridgeError(message, statusCode, "api_error", raw);
+var PayBridgeAuthenticationError = AuthenticationError;
+var PayBridgeInvalidRequestError = InvalidRequestError;
+var PayBridgeRateLimitError = RateLimitError;
+var PayBridgeSignatureVerificationError = SignatureVerificationError;
+var PayBridgeNotFoundError = InvalidRequestError;
+function parseErrorResponse(statusCode, body, retryAfterHeader) {
+  const errObj = body && typeof body === "object" && body.error && typeof body.error === "object" ? body.error : null;
+  const message = errObj ? String(errObj.message ?? `HTTP ${statusCode}`) : typeof body?.error === "string" ? body.error : `HTTP ${statusCode}`;
+  const type = errObj && typeof errObj.type === "string" ? errObj.type : void 0;
+  const code = errObj && typeof errObj.code === "string" ? errObj.code : typeof body?.code === "string" ? body.code : void 0;
+  const requestId = errObj && typeof errObj.request_id === "string" ? errObj.request_id : void 0;
+  const opts = { code, requestId, raw: body };
+  switch (type) {
+    case "authentication_error":
+      return new AuthenticationError(message, opts);
+    case "account_error":
+      return new AccountError(message, statusCode, {
+        ...opts,
+        suspension: errObj?.suspension,
+        pause: errObj?.pause
+      });
+    case "permission_error":
+      return new PermissionError(message, statusCode, opts);
+    case "invalid_request_error":
+      return new InvalidRequestError(message, statusCode, opts);
+    case "idempotency_error":
+      return new IdempotencyError(message, opts);
+    case "rate_limit_error":
+      return new RateLimitError(message, {
+        ...opts,
+        retryAfter: retryAfterHeader ? Number(retryAfterHeader) : void 0
+      });
+    case "api_error":
+      return new ApiError(message, statusCode, opts);
   }
+  if (statusCode === 401) return new AuthenticationError(message, opts);
+  if (statusCode === 403) return new PermissionError(message, statusCode, opts);
+  if (statusCode === 404) return new InvalidRequestError(message, statusCode, opts);
+  if (statusCode === 409) return new InvalidRequestError(message, statusCode, opts);
+  if (statusCode >= 400 && statusCode < 500) return new InvalidRequestError(message, statusCode, opts);
+  if (statusCode === 429) return new RateLimitError(message, {
+    ...opts,
+    retryAfter: retryAfterHeader ? Number(retryAfterHeader) : void 0
+  });
+  return new ApiError(message, statusCode, opts);
 }
 
 // src/http.ts
@@ -147,11 +238,7 @@ var HttpClient = class {
         });
       } catch (err) {
         if (attempt > this.maxRetries) {
-          throw new PayBridgeError(
-            `Connection error: ${err.message}`,
-            0,
-            "connection_error"
-          );
+          throw new ConnectionError(`Connection error: ${err.message}`);
         }
         await sleep(backoff(attempt));
         continue;
@@ -170,8 +257,7 @@ var HttpClient = class {
         raw = await res.json();
       } catch {
       }
-      const message = typeof raw?.error === "string" ? raw.error : `HTTP ${res.status}`;
-      throw createError(message, res.status, raw);
+      throw parseErrorResponse(res.status, raw, res.headers.get("Retry-After"));
     }
   }
   get(path) {
@@ -710,9 +796,15 @@ var PayBridge = class {
 };
 
 // src/index.ts
-var SDK_VERSION = "1.6.0";
+var SDK_VERSION = "3.0.0";
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  AccountError,
+  ApiError,
+  AuthenticationError,
+  ConnectionError,
+  IdempotencyError,
+  InvalidRequestError,
   PayBridge,
   PayBridgeAuthenticationError,
   PayBridgeError,
@@ -720,6 +812,10 @@ var SDK_VERSION = "1.6.0";
   PayBridgeNotFoundError,
   PayBridgeRateLimitError,
   PayBridgeSignatureVerificationError,
-  SDK_VERSION
+  PermissionError,
+  RateLimitError,
+  SDK_VERSION,
+  SignatureVerificationError,
+  parseErrorResponse
 });
 //# sourceMappingURL=index.cjs.map

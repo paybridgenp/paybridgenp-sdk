@@ -56,6 +56,12 @@ export type CustomerAddress = {
 
 export type CheckoutSession = {
   id: string;
+  /**
+   * `true` when created with a live (`sk_live_`) key, `false` for sandbox.
+   * Mirrors Stripe's `livemode` so integrations can confirm the environment
+   * without inspecting which key was used.
+   */
+  livemode: boolean;
   checkout_url: string;
   flow: CheckoutFlow;
   provider: Provider | null;
@@ -88,6 +94,8 @@ export type ExpiredCheckoutSession = {
 
 export type Payment = {
   id: string;
+  /** `true` when created with a live key, `false` for sandbox. */
+  livemode: boolean;
   project_id: string;
   checkout_session_id: string | null;
   amount: number;
@@ -124,6 +132,8 @@ export type WebhookEvent<T = unknown> = {
   id: string;
   type: WebhookEventType;
   created: number;
+  /** `true` for events from live keys, `false` for sandbox. */
+  livemode: boolean;
   data: T;
 };
 
@@ -140,6 +150,8 @@ export type UpdateWebhookParams = {
 
 export type WebhookEndpoint = {
   id: string;
+  /** `true` when created with a live key, `false` for sandbox. */
+  livemode: boolean;
   url: string;
   events: WebhookEventType[];
   enabled: boolean;

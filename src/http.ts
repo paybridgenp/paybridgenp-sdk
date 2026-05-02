@@ -1,4 +1,4 @@
-import { PayBridgeError, createError } from "./errors";
+import { ConnectionError, parseErrorResponse } from "./errors";
 import type { PayBridgeConfig } from "./types";
 
 const DEFAULT_BASE_URL = "https://api.paybridgenp.com";
@@ -51,11 +51,7 @@ export class HttpClient {
         });
       } catch (err) {
         if (attempt > this.maxRetries) {
-          throw new PayBridgeError(
-            `Connection error: ${(err as Error).message}`,
-            0,
-            "connection_error",
-          );
+          throw new ConnectionError(`Connection error: ${(err as Error).message}`);
         }
         await sleep(backoff(attempt));
         continue;
@@ -75,10 +71,11 @@ export class HttpClient {
       let raw: Record<string, unknown> | null = null;
       try {
         raw = await res.json() as Record<string, unknown>;
-      } catch {}
+      } catch {
+        // Body wasn't JSON. Will surface as `HTTP <status>` with no detail.
+      }
 
-      const message = typeof raw?.error === "string" ? raw.error : `HTTP ${res.status}`;
-      throw createError(message, res.status, raw);
+      throw parseErrorResponse(res.status, raw, res.headers.get("Retry-After"));
     }
   }
 

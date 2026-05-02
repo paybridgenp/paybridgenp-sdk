@@ -4,6 +4,8 @@ export type RefundReason = "customer_request" | "duplicate" | "fraudulent" | "ot
 
 export type Refund = {
   id: string;
+  /** `true` when created with a live key, `false` for sandbox. */
+  livemode: boolean;
   paymentId: string;
   projectId: string;
   mode: "sandbox" | "live";

@@ -40,7 +40,7 @@ export class WebhooksResource {
    * Verify and parse a webhook event from an incoming request.
    *
    * @param body      - Raw request body string (do NOT parse as JSON first)
-   * @param signature - Value of the `X-PayBridge-Signature` header
+   * @param signature - Value of the `X-PayBridgeNP-Signature` header
    * @param secret    - Your webhook signing secret (whsec_...)
    */
   async constructEvent<T = unknown>(
@@ -48,7 +48,7 @@ export class WebhooksResource {
     signature: string | null,
     secret: string,
   ): Promise<WebhookEvent<T>> {
-    if (!signature) throw new PayBridgeSignatureVerificationError("Missing X-PayBridge-Signature header");
+    if (!signature) throw new PayBridgeSignatureVerificationError("Missing X-PayBridgeNP-Signature header");
 
     const parts = Object.fromEntries(
       signature.split(",").map((p) => p.split("=") as [string, string]),

@@ -36,10 +36,10 @@ __export(index_exports, {
   ConnectionError: () => ConnectionError,
   IdempotencyError: () => IdempotencyError,
   InvalidRequestError: () => InvalidRequestError,
-  PayBridge: () => PayBridge,
   PayBridgeAuthenticationError: () => PayBridgeAuthenticationError,
   PayBridgeError: () => PayBridgeError,
   PayBridgeInvalidRequestError: () => PayBridgeInvalidRequestError,
+  PayBridgeNP: () => PayBridgeNP,
   PayBridgeNotFoundError: () => PayBridgeNotFoundError,
   PayBridgeRateLimitError: () => PayBridgeRateLimitError,
   PayBridgeSignatureVerificationError: () => PayBridgeSignatureVerificationError,
@@ -223,7 +223,7 @@ var HttpClient = class {
     const headers = {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
-      "User-Agent": "PayBridgeNP-SDK/0.1.0"
+      "User-Agent": "PayBridgeNP-SDK/3.0.0"
     };
     let attempt = 0;
     while (true) {
@@ -370,11 +370,11 @@ var WebhooksResource = class {
    * Verify and parse a webhook event from an incoming request.
    *
    * @param body      - Raw request body string (do NOT parse as JSON first)
-   * @param signature - Value of the `X-PayBridge-Signature` header
+   * @param signature - Value of the `X-PayBridgeNP-Signature` header
    * @param secret    - Your webhook signing secret (whsec_...)
    */
   async constructEvent(body, signature, secret) {
-    if (!signature) throw new PayBridgeSignatureVerificationError("Missing X-PayBridge-Signature header");
+    if (!signature) throw new PayBridgeSignatureVerificationError("Missing X-PayBridgeNP-Signature header");
     const parts = Object.fromEntries(
       signature.split(",").map((p) => p.split("="))
     );
@@ -734,7 +734,7 @@ var QrResource = class {
 };
 
 // src/client.ts
-var PayBridge = class {
+var PayBridgeNP = class {
   http;
   /** Static webhook utility — no instance required for signature verification. */
   static webhooks = new WebhooksResource();
@@ -805,10 +805,10 @@ var SDK_VERSION = "3.0.0";
   ConnectionError,
   IdempotencyError,
   InvalidRequestError,
-  PayBridge,
   PayBridgeAuthenticationError,
   PayBridgeError,
   PayBridgeInvalidRequestError,
+  PayBridgeNP,
   PayBridgeNotFoundError,
   PayBridgeRateLimitError,
   PayBridgeSignatureVerificationError,

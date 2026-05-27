@@ -33,7 +33,7 @@ export class HttpClient {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
-      "User-Agent": "PayBridgeNP-SDK/0.1.0",
+      "User-Agent": "PayBridgeNP-SDK/3.0.0",
     };
 
     let attempt = 0;

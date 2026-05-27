@@ -13,7 +13,7 @@ import { DunningResource } from "./resources/dunning";
 import { QrResource } from "./resources/qr";
 import type { PayBridgeConfig } from "./types";
 
-export class PayBridge {
+export class PayBridgeNP {
   private readonly http: HttpClient;
 
   /** Static webhook utility — no instance required for signature verification. */

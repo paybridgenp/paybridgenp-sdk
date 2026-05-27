@@ -1,6 +1,6 @@
 # @paybridge-np/sdk
 
-Official TypeScript SDK for the [PayBridgeNP](https://paybridgenp.com) payment gateway. Accept eSewa, Khalti, ConnectIPS, and Fonepay through a single API.
+Official TypeScript SDK for the [PayBridgeNP](https://paybridgenp.com) payment gateway. Accept eSewa, Khalti, and Fonepay through a single API.
 
 ## Installation
 
@@ -13,9 +13,9 @@ bun add @paybridge-np/sdk
 ## Quick start
 
 ```typescript
-import { PayBridge } from "@paybridge-np/sdk";
+import { PayBridgeNP } from "@paybridge-np/sdk";
 
-const client = new PayBridge({
+const client = new PayBridgeNP({
   apiKey: "sk_live_...", // from dashboard.paybridgenp.com
 });
 

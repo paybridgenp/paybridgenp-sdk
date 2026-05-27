@@ -1,4 +1,4 @@
-export { PayBridge } from "./client";
+export { PayBridgeNP } from "./client";
 export {
   // v3 typed error hierarchy — branch with `instanceof`.
   PayBridgeError,

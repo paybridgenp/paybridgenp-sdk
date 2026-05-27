@@ -1,4 +1,4 @@
-export type Provider = "esewa" | "khalti" | "connectips" | "hamropay" | "fonepay";
+export type Provider = "esewa" | "khalti" | "fonepay";
 
 export type PaymentStatus = "pending" | "processing" | "success" | "failed" | "cancelled" | "refunded";
 
@@ -18,7 +18,7 @@ export type CheckoutFlow = "hosted" | "redirect";
 export type CreateCheckoutParams = {
   amount: number;          // in paisa (NPR × 100)
   provider?: Provider;     // omit to let the customer pick on the hosted page
-  // "hosted" (default) renders the PayBridge picker, with `provider`
+  // "hosted" (default) renders the PayBridgeNP picker, with `provider`
   // pre-selected if set. "redirect" skips the picker and 302s straight to the
   // chosen provider — `provider` is required.
   flow?: CheckoutFlow;

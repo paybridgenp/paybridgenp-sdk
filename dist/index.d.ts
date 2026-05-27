@@ -1,4 +1,4 @@
-type Provider = "esewa" | "khalti" | "connectips" | "hamropay" | "fonepay";
+type Provider = "esewa" | "khalti" | "fonepay";
 type PaymentStatus = "pending" | "processing" | "success" | "failed" | "cancelled" | "refunded";
 type PayBridgeConfig = {
     apiKey: string;
@@ -239,7 +239,7 @@ declare class WebhooksResource {
      * Verify and parse a webhook event from an incoming request.
      *
      * @param body      - Raw request body string (do NOT parse as JSON first)
-     * @param signature - Value of the `X-PayBridge-Signature` header
+     * @param signature - Value of the `X-PayBridgeNP-Signature` header
      * @param secret    - Your webhook signing secret (whsec_...)
      */
     constructEvent<T = unknown>(body: string, signature: string | null, secret: string): Promise<WebhookEvent<T>>;
@@ -870,7 +870,7 @@ declare class QrResource {
     fonepay(params: CreateFonepayQrParams): Promise<FonepayQrSession>;
 }
 
-declare class PayBridge {
+declare class PayBridgeNP {
     private readonly http;
     /** Static webhook utility — no instance required for signature verification. */
     static readonly webhooks: WebhooksResource;
@@ -999,4 +999,4 @@ declare function parseErrorResponse(statusCode: number, body: Record<string, unk
 
 declare const SDK_VERSION: "3.0.0";
 
-export { AccountError, ApiError, AuthenticationError, type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, ConnectionError, type CreateCheckoutParams, type CreateCustomerParams, type CreateFonepayQrParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type ExpiredCheckoutSession, type FonepayQrCustomer, type FonepayQrSession, IdempotencyError, type IntervalUnit, InvalidRequestError, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseDetail, type PauseSubscriptionParams, PayBridge, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorType as PayBridgeErrorCode, type PayBridgeErrorType, PayBridgeInvalidRequestError, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentStatus, PermissionError, type Plan, type Provider, RateLimitError, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, SignatureVerificationError, type Subscription, type SubscriptionStatus, type SuspensionDetail, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType, parseErrorResponse };
+export { AccountError, ApiError, AuthenticationError, type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, ConnectionError, type CreateCheckoutParams, type CreateCustomerParams, type CreateFonepayQrParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type ExpiredCheckoutSession, type FonepayQrCustomer, type FonepayQrSession, IdempotencyError, type IntervalUnit, InvalidRequestError, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseDetail, type PauseSubscriptionParams, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorType as PayBridgeErrorCode, type PayBridgeErrorType, PayBridgeInvalidRequestError, PayBridgeNP, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentStatus, PermissionError, type Plan, type Provider, RateLimitError, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, SignatureVerificationError, type Subscription, type SubscriptionStatus, type SuspensionDetail, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType, parseErrorResponse };

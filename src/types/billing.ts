@@ -115,7 +115,14 @@ export type BillingCustomer = {
 
 // ── Subscriptions ────────────────────────────────────────────────────────────
 
-export type SubscriptionStatus = "active" | "past_due" | "paused" | "cancelled" | "completed";
+export type SubscriptionStatus =
+  | "incomplete"
+  | "incomplete_expired"
+  | "active"
+  | "past_due"
+  | "paused"
+  | "cancelled"
+  | "completed";
 
 export type CreateSubscriptionParams = {
   customerId: string;

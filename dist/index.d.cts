@@ -344,7 +344,7 @@ type BillingCustomer = {
     createdAt: string;
     updatedAt: string;
 };
-type SubscriptionStatus = "active" | "past_due" | "paused" | "cancelled" | "completed";
+type SubscriptionStatus = "incomplete" | "incomplete_expired" | "active" | "past_due" | "paused" | "cancelled" | "completed";
 type CreateSubscriptionParams = {
     customerId: string;
     planId: string;

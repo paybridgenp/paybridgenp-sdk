@@ -664,6 +664,21 @@ var DunningResource = class {
   }
 };
 
+// src/resources/tax.ts
+var TaxResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  /** Get the current tax settings. */
+  getSettings() {
+    return this.http.get("/v1/billing/settings/tax");
+  }
+  /** Update tax settings (enabled, rate, registration number, label). */
+  updateSettings(params) {
+    return this.http.patch("/v1/billing/settings/tax", params);
+  }
+};
+
 // src/resources/qr.ts
 var QrResource = class {
   constructor(http) {
@@ -696,6 +711,7 @@ var PayBridgeNP = class {
   _coupons;
   _promotionCodes;
   _dunning;
+  _tax;
   _qr;
   constructor(config) {
     this.http = new HttpClient(config);
@@ -733,6 +749,10 @@ var PayBridgeNP = class {
   get dunning() {
     return this._dunning ??= new DunningResource(this.http);
   }
+  /** Account-level tax settings applied to invoices. */
+  get tax() {
+    return this._tax ??= new TaxResource(this.http);
+  }
   /**
    * Direct-QR API for Fonepay. Premium feature — generates an embeddable QR
    * + SSE event stream so developers can build their own checkout UI.
@@ -743,7 +763,7 @@ var PayBridgeNP = class {
 };
 
 // src/index.ts
-var SDK_VERSION = "3.0.0";
+var SDK_VERSION = "5.0.0";
 export {
   AccountError,
   ApiError,

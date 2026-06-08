@@ -283,31 +283,27 @@ type ListPlansParams = {
 };
 type Plan = {
     id: string;
-    /** `true` when created with a live key, `false` for sandbox. */
-    livemode: boolean;
-    merchantId: string;
-    projectId: string;
-    mode: string;
+    object: "plan";
     name: string;
     description: string | null;
     amount: number;
     currency: string;
-    intervalUnit: IntervalUnit;
-    intervalCount: number;
-    gracePeriodDays: number;
-    defaultProvider: Provider | null;
-    billingScheme: BillingScheme;
-    aggregationMethod: AggregationMethod;
+    interval_unit: IntervalUnit;
+    interval_count: number;
+    grace_period_days: number;
+    trial_days: number;
+    default_provider: Provider | null;
     active: boolean;
+    billing_scheme: BillingScheme;
+    aggregation_method: AggregationMethod | null;
+    dunning_settings: {
+        reminder_days_before_due: number;
+        overdue_reminder_interval_days: number;
+        overdue_action: OverdueAction;
+    } | null;
     metadata: Metadata | null;
-    trialDays: number;
-    dunningSettings: {
-        reminderDaysBeforeDue: number;
-        overdueReminderIntervalDays: number;
-        overdueAction: OverdueAction;
-    };
-    createdAt: string;
-    updatedAt: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
 };
 type CreateCustomerParams = {
     name: string;
@@ -330,21 +326,17 @@ type ListCustomersParams = {
 };
 type BillingCustomer = {
     id: string;
-    /** `true` when created with a live key, `false` for sandbox. */
-    livemode: boolean;
-    merchantId: string;
-    projectId: string;
-    mode: string;
+    object: "customer";
     name: string;
     email: string | null;
     phone: string | null;
-    externalCustomerId: string | null;
-    creditBalance: number;
+    external_customer_id: string | null;
+    credit_balance: number;
     metadata: Metadata | null;
-    createdAt: string;
-    updatedAt: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
 };
-type SubscriptionStatus = "incomplete" | "incomplete_expired" | "active" | "past_due" | "paused" | "cancelled" | "completed";
+type SubscriptionStatus = "incomplete" | "incomplete_expired" | "draft" | "trialing" | "active" | "past_due" | "paused" | "cancelled" | "completed";
 type CreateSubscriptionParams = {
     customerId: string;
     planId: string;
@@ -372,30 +364,56 @@ type ExtendTrialParams = {
 };
 type EndTrialResponse = {
     subscription: Subscription;
-    invoice: unknown;
+    invoice: Invoice | null;
+};
+type CustomerRef = {
+    id: string;
+    name: string | null;
+    email: string | null;
+    phone?: string | null;
+    external_customer_id?: string | null;
+};
+type PlanRef = {
+    id: string;
+    name: string;
+    amount?: number;
+    currency?: string;
+    interval_unit?: string;
+    interval_count?: number;
+    grace_period_days?: number;
+};
+type SubscriptionLatestInvoice = {
+    id?: string;
+    number?: string;
+    status: string;
+    amount_due?: number;
+    amount_paid?: number;
+    currency?: string;
+    due_at: string | null;
+    paid_at: string | null;
+    issued_at?: string | null;
 };
 type CouponDiscountType = "percent" | "amount";
 type CouponDuration = "once" | "repeating" | "forever";
 type Coupon = {
     id: string;
-    merchantId: string;
+    object: "coupon";
     code: string;
     name: string;
-    discountType: CouponDiscountType;
-    percentOff: number | null;
-    amountOff: number | null;
+    discount_type: CouponDiscountType;
+    percent_off: number | null;
+    amount_off: number | null;
     currency: string;
     duration: CouponDuration;
-    durationInCycles: number | null;
-    maxRedemptions: number | null;
-    redeemedCount: number;
-    redeemBy: string | null;
-    appliesToPlanIds: string[] | null;
-    projectIds: string[] | null;
+    duration_in_cycles: number | null;
+    max_redemptions: number | null;
+    redeemed_count: number;
+    redeem_by: string | null;
+    applies_to_plan_ids: string[] | null;
     active: boolean;
     metadata: Metadata | null;
-    createdAt: string;
-    updatedAt: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
 };
 type CreateCouponParams = {
     code: string;
@@ -409,7 +427,6 @@ type CreateCouponParams = {
     maxRedemptions?: number;
     redeemBy?: string;
     appliesToPlanIds?: string[];
-    projectIds?: string[];
     metadata?: Metadata | null;
 };
 type ListCouponsParams = {
@@ -418,19 +435,19 @@ type ListCouponsParams = {
 };
 type PromotionCode = {
     id: string;
-    couponId: string;
-    merchantId: string;
+    object: "promotion_code";
     code: string;
+    coupon_id: string;
     active: boolean;
-    maxRedemptions: number | null;
-    redeemedCount: number;
-    expiresAt: string | null;
-    firstTimeTransaction: boolean;
-    minimumAmount: number | null;
-    customerIds: string[] | null;
+    max_redemptions: number | null;
+    redeemed_count: number;
+    expires_at: string | null;
+    first_time_transaction: boolean;
+    minimum_amount: number | null;
+    customer_ids: string[] | null;
     metadata: Metadata | null;
-    createdAt: string;
-    updatedAt: string;
+    /** `true` when created with a live key, `false` for sandbox. */
+    livemode: boolean;
 };
 type CreatePromotionCodeParams = {
     couponId: string;
@@ -456,7 +473,7 @@ type ValidatePromotionCodeParams = {
 type ValidatePromotionCodeResponse = {
     valid: true;
     coupon: Coupon;
-    promotion_code: PromotionCode;
+    promotion_code: PromotionCode | null;
     discount_preview: {
         amount_off: number;
         amount_after_discount: number;
@@ -468,6 +485,31 @@ type ValidatePromotionCodeResponse = {
 type ApplyCouponParams = {
     couponId?: string;
     promotionCode?: string;
+};
+type Discount = {
+    id: string;
+    object: "discount";
+    subscription_id: string;
+    coupon_id: string;
+    promotion_code_id: string | null;
+    started_at: string | null;
+    /** `null` for a forever discount. */
+    ends_at: string | null;
+    /** Remaining billing cycles for a repeating discount. */
+    cycles_remaining: number | null;
+    active: boolean;
+};
+type TaxSettings = {
+    enabled: boolean;
+    rate_bps: number;
+    registration_number: string | null;
+    label: string | null;
+};
+type UpdateTaxSettingsParams = {
+    enabled?: boolean;
+    rateBps?: number;
+    registrationNumber?: string | null;
+    label?: string | null;
 };
 type ListSubscriptionsParams = {
     page?: number;
@@ -492,29 +534,37 @@ type ChangePlanParams = {
 };
 type Subscription = {
     id: string;
+    object: "subscription";
+    status: SubscriptionStatus;
+    customer_id: string | null;
+    plan_id: string | null;
+    start_date: string | null;
+    current_period_start: string | null;
+    current_period_end: string | null;
+    next_invoice_at: string | null;
+    cancel_at_period_end: boolean;
+    canceled_at: string | null;
+    paused_at: string | null;
+    ended_at: string | null;
+    trial_ends_at: string | null;
+    pause_reason: string | null;
+    cancel_reason: string | null;
+    cancel_effective_at: string | null;
+    billing_anchor_day: number | null;
+    due_days_after_period_start: number | null;
+    provider_preference: Provider | null;
+    reference_id: string | null;
+    /** Present on lifecycle responses. */
+    quantity?: number;
+    /** Expanded on retrieve; `null` on lifecycle mutation responses. */
+    customer: CustomerRef | null;
+    plan: PlanRef | null;
+    /** Set when a plan change is scheduled for the next period. */
+    pending_plan: PlanRef | null;
+    latest_invoice: SubscriptionLatestInvoice | null;
+    metadata: Metadata | null;
     /** `true` when created with a live key, `false` for sandbox. */
     livemode: boolean;
-    merchantId: string;
-    projectId: string;
-    mode: string;
-    customerId: string;
-    planId: string;
-    status: SubscriptionStatus;
-    startDate: string;
-    quantity: number;
-    billingAnchorDay: number | null;
-    currentPeriodStart: string;
-    currentPeriodEnd: string;
-    nextInvoiceAt: string;
-    cancelAtPeriodEnd: boolean;
-    cancelledAt: string | null;
-    pausedAt: string | null;
-    endedAt: string | null;
-    providerPreference: Provider | null;
-    referenceId: string | null;
-    metadata: Metadata | null;
-    createdAt: string;
-    updatedAt: string;
 };
 type ReportUsageParams = {
     quantity: number;
@@ -525,22 +575,29 @@ type ReportUsageParams = {
     /** Idempotency key — same key returns the existing record without double-counting. */
     idempotencyKey?: string | null;
 };
+/** The ack returned by `reportUsage` — `created` is false on an idempotent replay. */
+type UsageReportAck = {
+    id: string;
+    object: "usage_record";
+    created: boolean;
+};
 type UsageRecord = {
     id: string;
-    subscriptionId: string;
+    object: "usage_record";
+    subscription_id: string;
     quantity: number;
     action: "increment" | "set";
-    recordedAt: string;
-    idempotencyKey: string | null;
-    createdAt: string;
+    recorded_at: string | null;
+    idempotency_key: string | null;
 };
 type UsageSummary = {
-    subscriptionId: string;
-    periodStart: string;
-    periodEnd: string;
+    object: "usage_summary";
+    subscription_id: string;
+    period_start: string | null;
+    period_end: string | null;
     quantity: number;
-    aggregationMethod: "sum" | "max" | "last_ever";
-    recordCount: number;
+    aggregation_method: "sum" | "max" | "last_ever";
+    record_count: number;
 };
 type CreateInvoiceItemParams = {
     description: string;
@@ -550,14 +607,16 @@ type CreateInvoiceItemParams = {
 };
 type InvoiceItem = {
     id: string;
-    subscriptionId: string;
+    object: "invoice_item";
+    subscription_id: string;
+    customer_id: string;
     description: string;
     amount: number;
     quantity: number;
     currency: string;
-    createdAt: string;
+    metadata: Metadata | null;
 };
-type InvoiceStatus = "draft" | "open" | "paid" | "overdue" | "void" | "uncollectible";
+type InvoiceStatus = "open" | "paid" | "overdue" | "void" | "uncollectible" | "write_off";
 type ListInvoicesParams = {
     page?: number;
     limit?: number;
@@ -566,42 +625,40 @@ type ListInvoicesParams = {
     subscriptionId?: string;
     search?: string;
 };
+type InvoiceSubscriptionRef = {
+    id: string;
+    status: string;
+    current_period_start?: string | null;
+    current_period_end?: string | null;
+};
 type Invoice = {
     id: string;
+    object: "invoice";
+    number: string;
+    status: InvoiceStatus;
+    amount_due: number;
+    amount_paid: number;
+    currency: string;
+    issued_at: string | null;
+    due_at: string | null;
+    paid_at: string | null;
+    hosted_invoice_url: string | null;
+    customer: CustomerRef | null;
+    subscription: InvoiceSubscriptionRef | null;
+    plan: PlanRef | null;
+    metadata: Metadata | null;
     /** `true` when created with a live key, `false` for sandbox. */
     livemode: boolean;
-    merchantId: string;
-    projectId: string;
-    mode: string;
-    customerId: string;
-    subscriptionId: string;
-    planSnapshot: Record<string, unknown> | null;
-    invoiceNumber: string;
-    status: InvoiceStatus;
-    amountDue: number;
-    amountPaid: number;
-    currency: string;
-    periodStart: string;
-    periodEnd: string;
-    issuedAt: string;
-    dueAt: string;
-    paidAt: string | null;
-    retryCount: number;
-    metadata: Metadata | null;
-    createdAt: string;
-    updatedAt: string;
 };
 type DunningFinalAction = "cancel" | "pause" | "mark_uncollectible";
 type DunningPolicy = {
     id: string;
-    merchantId: string;
+    object: "dunning_policy";
     name: string;
-    retryIntervalsDays: number[];
-    finalAction: DunningFinalAction;
-    isDefault: boolean;
+    retry_intervals_days: number[];
+    final_action: DunningFinalAction;
+    is_default: boolean;
     active: boolean;
-    createdAt: string;
-    updatedAt: string;
 };
 type CreateDunningPolicyParams = {
     name: string;
@@ -618,25 +675,30 @@ type UpdateDunningPolicyParams = {
 };
 type DunningAttempt = {
     id: string;
-    invoiceId: string;
-    subscriptionId: string;
-    merchantId: string;
-    attemptNumber: number;
+    object: "dunning_attempt";
+    invoice_id: string;
+    subscription_id: string;
+    attempt_number: number;
     status: "sent" | "recovered" | "exhausted";
-    nextAttemptAt: string | null;
-    createdAt: string;
+    next_attempt_at: string | null;
 };
 type DunningInvoiceStatus = {
-    dunningStatus: "idle" | "retrying" | "exhausted" | "recovered" | "stopped";
-    dunningAttemptCount: number;
-    nextDunningAt: string | null;
+    object: "dunning_status";
+    status: "idle" | "retrying" | "exhausted" | "recovered" | "stopped" | null;
+    attempt_count: number | null;
+    next_attempt_at: string | null;
     attempts: DunningAttempt[];
 };
+/** Paginated lists (plans, customers, subscriptions, invoices). */
 type PaginatedBillingResponse<T> = {
     data: T[];
     total: number;
     page: number;
     limit: number;
+};
+/** Simple `{ data }` lists (coupons, promotion-codes, dunning policies, usage records, invoice items). */
+type BillingListResponse<T> = {
+    data: T[];
 };
 type ProrationPreview = {
     creditAmount: number;
@@ -657,16 +719,18 @@ type ProrationPreview = {
     };
 };
 type ChangePlanResult = {
-    prorationApplied: true;
-    prorationInvoice: Record<string, unknown> | null;
+    proration_applied: true;
+    proration_invoice: Invoice | null;
     preview: ProrationPreview;
 } | {
     subscription: Subscription;
-    nextPlan: {
+    next_plan: {
         id: string;
         name: string;
-        amount: number;
-        currency: string;
+        amount?: number;
+        currency?: string;
+        interval_unit?: string;
+        interval_count?: number;
     };
 };
 
@@ -735,24 +799,21 @@ declare class SubscriptionsResource {
      * effect on the next invoice. Deactivates any prior active discount on
      * this sub (partial unique index enforces one active discount per sub).
      */
-    applyCoupon(id: string, params: ApplyCouponParams): Promise<unknown>;
+    applyCoupon(id: string, params: ApplyCouponParams): Promise<Discount>;
     /** Remove the currently active discount. Future invoices are un-discounted. */
-    removeDiscount(id: string): Promise<unknown>;
+    removeDiscount(id: string): Promise<Discount>;
     /**
      * Report a usage event for a metered subscription. Use `action: "increment"`
      * (default) to add to the running total, or `action: "set"` for gauge-style
      * metrics. Pass `idempotencyKey` to prevent double-counting.
      */
-    reportUsage(id: string, params: ReportUsageParams): Promise<{
-        id: string;
-        created: boolean;
-    }>;
+    reportUsage(id: string, params: ReportUsageParams): Promise<UsageReportAck>;
     /** Get the aggregated usage summary for the current billing period. */
     getUsageSummary(id: string): Promise<UsageSummary>;
     /** List raw usage records for a subscription. */
-    listUsageRecords(id: string, limit?: number): Promise<UsageRecord[]>;
+    listUsageRecords(id: string, limit?: number): Promise<BillingListResponse<UsageRecord>>;
     /** List pending one-off charges that will be included in the next invoice. */
-    listInvoiceItems(id: string): Promise<InvoiceItem[]>;
+    listInvoiceItems(id: string): Promise<BillingListResponse<InvoiceItem>>;
     /**
      * Add a one-off charge to a subscription. It will be included (and consumed)
      * when the next invoice is generated.
@@ -781,7 +842,7 @@ declare class CouponsResource {
      * replace by deactivating and creating a new one.
      */
     create(params: CreateCouponParams): Promise<Coupon>;
-    list(params?: ListCouponsParams): Promise<PaginatedBillingResponse<Coupon>>;
+    list(params?: ListCouponsParams): Promise<BillingListResponse<Coupon>>;
     get(id: string): Promise<Coupon>;
     /** Deactivate. Soft-delete — historical redemptions remain intact. */
     deactivate(id: string): Promise<Coupon>;
@@ -795,7 +856,7 @@ declare class PromotionCodesResource {
      * auto-uppercased server-side and unique per merchant.
      */
     create(params: CreatePromotionCodeParams): Promise<PromotionCode>;
-    list(params?: ListPromotionCodesParams): Promise<PaginatedBillingResponse<PromotionCode>>;
+    list(params?: ListPromotionCodesParams): Promise<BillingListResponse<PromotionCode>>;
     get(id: string): Promise<PromotionCode>;
     /** Deactivate. Existing redemptions remain valid. */
     deactivate(id: string): Promise<PromotionCode>;
@@ -825,6 +886,16 @@ declare class DunningResource {
     retryInvoiceNow(invoiceId: string): Promise<{
         ok: boolean;
     }>;
+}
+
+/** Account-level tax configuration applied to invoices. */
+declare class TaxResource {
+    private readonly http;
+    constructor(http: HttpClient);
+    /** Get the current tax settings. */
+    getSettings(): Promise<TaxSettings>;
+    /** Update tax settings (enabled, rate, registration number, label). */
+    updateSettings(params: UpdateTaxSettingsParams): Promise<TaxSettings>;
 }
 
 type FonepayQrCustomer = {
@@ -885,6 +956,7 @@ declare class PayBridgeNP {
     private _coupons?;
     private _promotionCodes?;
     private _dunning?;
+    private _tax?;
     private _qr?;
     constructor(config: PayBridgeConfig);
     get checkout(): CheckoutResource;
@@ -898,6 +970,8 @@ declare class PayBridgeNP {
     get coupons(): CouponsResource;
     get promotionCodes(): PromotionCodesResource;
     get dunning(): DunningResource;
+    /** Account-level tax settings applied to invoices. */
+    get tax(): TaxResource;
     /**
      * Direct-QR API for Fonepay. Premium feature — generates an embeddable QR
      * + SSE event stream so developers can build their own checkout UI.
@@ -997,6 +1071,6 @@ declare const PayBridgeNotFoundError: typeof InvalidRequestError;
  */
 declare function parseErrorResponse(statusCode: number, body: Record<string, unknown> | null, retryAfterHeader: string | null): PayBridgeError;
 
-declare const SDK_VERSION: "3.0.0";
+declare const SDK_VERSION: "5.0.0";
 
-export { AccountError, ApiError, AuthenticationError, type BillingCustomer, type CancelSubscriptionParams, type ChangePlanParams, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, ConnectionError, type CreateCheckoutParams, type CreateCustomerParams, type CreateFonepayQrParams, type CreatePlanParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type ExpiredCheckoutSession, type FonepayQrCustomer, type FonepayQrSession, IdempotencyError, type IntervalUnit, InvalidRequestError, type Invoice, type InvoiceStatus, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseDetail, type PauseSubscriptionParams, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorType as PayBridgeErrorCode, type PayBridgeErrorType, PayBridgeInvalidRequestError, PayBridgeNP, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentStatus, PermissionError, type Plan, type Provider, RateLimitError, type Refund, type RefundReason, type RefundStatus, SDK_VERSION, SignatureVerificationError, type Subscription, type SubscriptionStatus, type SuspensionDetail, type UpdateCustomerParams, type UpdatePlanParams, type WebhookEndpoint, type WebhookEvent, type WebhookEventType, parseErrorResponse };
+export { AccountError, type AggregationMethod, ApiError, type ApplyCouponParams, AuthenticationError, type BillingCustomer, type BillingListResponse, type BillingScheme, type CancelSubscriptionParams, type ChangePlanParams, type ChangePlanResult, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, ConnectionError, type Coupon, type CouponDiscountType, type CouponDuration, type CreateCheckoutParams, type CreateCouponParams, type CreateCustomerParams, type CreateDunningPolicyParams, type CreateFonepayQrParams, type CreateInvoiceItemParams, type CreatePlanParams, type CreatePromotionCodeParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type CustomerRef, type Discount, type DunningAttempt, type DunningFinalAction, type DunningInvoiceStatus, type DunningPolicy, type EndTrialResponse, type ExpiredCheckoutSession, type ExtendTrialParams, type FonepayQrCustomer, type FonepayQrSession, IdempotencyError, type IntervalUnit, InvalidRequestError, type Invoice, type InvoiceItem, type InvoiceStatus, type InvoiceSubscriptionRef, type ListCouponsParams, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListPromotionCodesParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseDetail, type PauseSubscriptionParams, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorType as PayBridgeErrorCode, type PayBridgeErrorType, PayBridgeInvalidRequestError, PayBridgeNP, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentStatus, PermissionError, type Plan, type PlanRef, type PromotionCode, type ProrationBehavior, type ProrationPreview, type Provider, RateLimitError, type Refund, type RefundReason, type RefundStatus, type ReportUsageParams, SDK_VERSION, SignatureVerificationError, type Subscription, type SubscriptionLatestInvoice, type SubscriptionStatus, type SuspensionDetail, type TaxSettings, type UpdateCustomerParams, type UpdateDunningPolicyParams, type UpdatePlanParams, type UpdateTaxSettingsParams, type UsageRecord, type UsageReportAck, type UsageSummary, type ValidatePromotionCodeParams, type ValidatePromotionCodeResponse, type WebhookEndpoint, type WebhookEvent, type WebhookEventType, parseErrorResponse };

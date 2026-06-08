@@ -3,7 +3,7 @@ import type {
   CreateCouponParams,
   Coupon,
   ListCouponsParams,
-  PaginatedBillingResponse,
+  BillingListResponse,
 } from "../types/billing";
 
 export class CouponsResource {
@@ -17,12 +17,12 @@ export class CouponsResource {
     return this.http.post<Coupon>("/v1/billing/coupons", params);
   }
 
-  list(params: ListCouponsParams = {}): Promise<PaginatedBillingResponse<Coupon>> {
+  list(params: ListCouponsParams = {}): Promise<BillingListResponse<Coupon>> {
     const qs = new URLSearchParams();
     if (params.active !== undefined) qs.set("active", String(params.active));
     if (params.limit !== undefined) qs.set("limit", String(params.limit));
     const query = qs.toString();
-    return this.http.get<PaginatedBillingResponse<Coupon>>(
+    return this.http.get<BillingListResponse<Coupon>>(
       `/v1/billing/coupons${query ? `?${query}` : ""}`,
     );
   }

@@ -1,11 +1,13 @@
 import type { HttpClient } from "../http";
 import type {
   ApplyCouponParams,
+  BillingListResponse,
   CancelSubscriptionParams,
   ChangePlanParams,
   ChangePlanResult,
   CreateInvoiceItemParams,
   CreateSubscriptionParams,
+  Discount,
   EndTrialResponse,
   ExtendTrialParams,
   InvoiceItem,
@@ -16,6 +18,7 @@ import type {
   ReportUsageParams,
   Subscription,
   UsageRecord,
+  UsageReportAck,
   UsageSummary,
 } from "../types/billing";
 
@@ -93,13 +96,13 @@ export class SubscriptionsResource {
    * effect on the next invoice. Deactivates any prior active discount on
    * this sub (partial unique index enforces one active discount per sub).
    */
-  applyCoupon(id: string, params: ApplyCouponParams): Promise<unknown> {
-    return this.http.post<unknown>(`/v1/billing/subscriptions/${id}/apply-coupon`, params);
+  applyCoupon(id: string, params: ApplyCouponParams): Promise<Discount> {
+    return this.http.post<Discount>(`/v1/billing/subscriptions/${id}/apply-coupon`, params);
   }
 
   /** Remove the currently active discount. Future invoices are un-discounted. */
-  removeDiscount(id: string): Promise<unknown> {
-    return this.http.delete<unknown>(`/v1/billing/subscriptions/${id}/discount`);
+  removeDiscount(id: string): Promise<Discount> {
+    return this.http.delete<Discount>(`/v1/billing/subscriptions/${id}/discount`);
   }
 
   // ── Usage (metered billing) ─────────────────────────────────────────────────
@@ -109,8 +112,8 @@ export class SubscriptionsResource {
    * (default) to add to the running total, or `action: "set"` for gauge-style
    * metrics. Pass `idempotencyKey` to prevent double-counting.
    */
-  reportUsage(id: string, params: ReportUsageParams): Promise<{ id: string; created: boolean }> {
-    return this.http.post<{ id: string; created: boolean }>(`/v1/billing/subscriptions/${id}/usage`, {
+  reportUsage(id: string, params: ReportUsageParams): Promise<UsageReportAck> {
+    return this.http.post<UsageReportAck>(`/v1/billing/subscriptions/${id}/usage`, {
       quantity: params.quantity,
       action: params.action,
       recorded_at: params.recordedAt,
@@ -124,16 +127,16 @@ export class SubscriptionsResource {
   }
 
   /** List raw usage records for a subscription. */
-  listUsageRecords(id: string, limit?: number): Promise<UsageRecord[]> {
+  listUsageRecords(id: string, limit?: number): Promise<BillingListResponse<UsageRecord>> {
     const qs = limit ? `?limit=${limit}` : "";
-    return this.http.get<UsageRecord[]>(`/v1/billing/subscriptions/${id}/usage/records${qs}`);
+    return this.http.get<BillingListResponse<UsageRecord>>(`/v1/billing/subscriptions/${id}/usage/records${qs}`);
   }
 
   // ── Pending Invoice Items ───────────────────────────────────────────────────
 
   /** List pending one-off charges that will be included in the next invoice. */
-  listInvoiceItems(id: string): Promise<InvoiceItem[]> {
-    return this.http.get<InvoiceItem[]>(`/v1/billing/subscriptions/${id}/invoice-items`);
+  listInvoiceItems(id: string): Promise<BillingListResponse<InvoiceItem>> {
+    return this.http.get<BillingListResponse<InvoiceItem>>(`/v1/billing/subscriptions/${id}/invoice-items`);
   }
 
   /**

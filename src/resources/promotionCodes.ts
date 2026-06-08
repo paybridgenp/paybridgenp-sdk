@@ -5,7 +5,7 @@ import type {
   ListPromotionCodesParams,
   ValidatePromotionCodeParams,
   ValidatePromotionCodeResponse,
-  PaginatedBillingResponse,
+  BillingListResponse,
 } from "../types/billing";
 
 export class PromotionCodesResource {
@@ -19,13 +19,13 @@ export class PromotionCodesResource {
     return this.http.post<PromotionCode>("/v1/billing/promotion-codes", params);
   }
 
-  list(params: ListPromotionCodesParams = {}): Promise<PaginatedBillingResponse<PromotionCode>> {
+  list(params: ListPromotionCodesParams = {}): Promise<BillingListResponse<PromotionCode>> {
     const qs = new URLSearchParams();
     if (params.couponId) qs.set("couponId", params.couponId);
     if (params.active !== undefined) qs.set("active", String(params.active));
     if (params.limit !== undefined) qs.set("limit", String(params.limit));
     const query = qs.toString();
-    return this.http.get<PaginatedBillingResponse<PromotionCode>>(
+    return this.http.get<BillingListResponse<PromotionCode>>(
       `/v1/billing/promotion-codes${query ? `?${query}` : ""}`,
     );
   }

@@ -60,6 +60,8 @@ export type {
   // Plans
   IntervalUnit,
   OverdueAction,
+  BillingScheme,
+  AggregationMethod,
   CreatePlanParams,
   UpdatePlanParams,
   ListPlansParams,
@@ -76,13 +78,53 @@ export type {
   PauseSubscriptionParams,
   CancelSubscriptionParams,
   ChangePlanParams,
+  ChangePlanResult,
+  ProrationBehavior,
+  ProrationPreview,
+  ExtendTrialParams,
+  EndTrialResponse,
   Subscription,
+  CustomerRef,
+  PlanRef,
+  SubscriptionLatestInvoice,
+  // Coupons + promotion codes
+  CouponDiscountType,
+  CouponDuration,
+  Coupon,
+  CreateCouponParams,
+  ListCouponsParams,
+  PromotionCode,
+  CreatePromotionCodeParams,
+  ListPromotionCodesParams,
+  ValidatePromotionCodeParams,
+  ValidatePromotionCodeResponse,
+  ApplyCouponParams,
+  Discount,
+  // Tax
+  TaxSettings,
+  UpdateTaxSettingsParams,
+  // Usage + invoice items
+  ReportUsageParams,
+  UsageReportAck,
+  UsageRecord,
+  UsageSummary,
+  CreateInvoiceItemParams,
+  InvoiceItem,
   // Invoices
   InvoiceStatus,
   ListInvoicesParams,
   Invoice,
+  InvoiceSubscriptionRef,
+  // Dunning
+  DunningFinalAction,
+  DunningPolicy,
+  CreateDunningPolicyParams,
+  UpdateDunningPolicyParams,
+  DunningAttempt,
+  DunningInvoiceStatus,
   // Shared
   PaginatedBillingResponse,
+  BillingListResponse,
 } from "./types/billing";
 
-export const SDK_VERSION = "3.0.0" as const;
+export const SDK_VERSION = "5.0.0" as const;

@@ -10,6 +10,7 @@ import { InvoicesResource } from "./resources/invoices";
 import { CouponsResource } from "./resources/coupons";
 import { PromotionCodesResource } from "./resources/promotionCodes";
 import { DunningResource } from "./resources/dunning";
+import { TaxResource } from "./resources/tax";
 import { QrResource } from "./resources/qr";
 import type { PayBridgeConfig } from "./types";
 
@@ -30,6 +31,7 @@ export class PayBridgeNP {
   private _coupons?: CouponsResource;
   private _promotionCodes?: PromotionCodesResource;
   private _dunning?: DunningResource;
+  private _tax?: TaxResource;
   private _qr?: QrResource;
 
   constructor(config: PayBridgeConfig) {
@@ -78,6 +80,11 @@ export class PayBridgeNP {
 
   get dunning(): DunningResource {
     return (this._dunning ??= new DunningResource(this.http));
+  }
+
+  /** Account-level tax settings applied to invoices. */
+  get tax(): TaxResource {
+    return (this._tax ??= new TaxResource(this.http));
   }
 
   /**

@@ -230,6 +230,32 @@ var CheckoutResource = class {
     return this.http.post("/v1/checkout", params);
   }
   /**
+   * Retrieve a checkout session by ID, including its current status, amount,
+   * customer, and any collected address. Read-only — sessions are created via
+   * {@link create}. Hits `GET /v1/sessions/{id}`.
+   *
+   * Note: this richer read shape uses camelCase keys (`customerName`,
+   * `expiresAt`, …), unlike the snake_case create response.
+   */
+  retrieve(id) {
+    return this.http.get(`/v1/sessions/${encodeURIComponent(id)}`);
+  }
+  /**
+   * List checkout sessions for the authenticated project, newest first.
+   * Optionally filter by `status` and page with `limit`/`offset`. Hits
+   * `GET /v1/sessions`.
+   */
+  list(params = {}) {
+    const qs = new URLSearchParams();
+    if (params.limit !== void 0) qs.set("limit", String(params.limit));
+    if (params.offset !== void 0) qs.set("offset", String(params.offset));
+    if (params.status !== void 0) qs.set("status", params.status);
+    const query = qs.toString();
+    return this.http.get(
+      `/v1/sessions${query ? `?${query}` : ""}`
+    );
+  }
+  /**
    * Expire a checkout session so it can no longer accept payment.
    *
    * Use this when you mint a fresh checkout session for a logical purchase
@@ -247,6 +273,51 @@ var CheckoutResource = class {
       `/v1/checkout/${encodeURIComponent(id)}/expire`,
       {}
     );
+  }
+};
+
+// src/resources/paymentLinks.ts
+var PaymentLinksResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  /** Create a payment link. Returns the created link (HTTP 201). */
+  create(params) {
+    return this.http.post("/v1/payment-links", params);
+  }
+  /** List payment links for the project, newest first. Filter with `active`. */
+  list(params = {}) {
+    const qs = new URLSearchParams();
+    if (params.limit !== void 0) qs.set("limit", String(params.limit));
+    if (params.offset !== void 0) qs.set("offset", String(params.offset));
+    if (params.active !== void 0) qs.set("active", String(params.active));
+    const query = qs.toString();
+    return this.http.get(
+      `/v1/payment-links${query ? `?${query}` : ""}`
+    );
+  }
+  /** Retrieve a single link by ID, including aggregated view/conversion stats. */
+  retrieve(id) {
+    return this.http.get(`/v1/payment-links/${encodeURIComponent(id)}`);
+  }
+  /** Update a link's editable fields. Only the keys you pass are changed. */
+  update(id, params) {
+    return this.http.patch(`/v1/payment-links/${encodeURIComponent(id)}`, params);
+  }
+  /**
+   * Cancel (deactivate) a link so it can no longer accept payments, while
+   * keeping it and its history for your records. The recommended way to retire
+   * a link that has already been used.
+   */
+  cancel(id) {
+    return this.http.post(`/v1/payment-links/${encodeURIComponent(id)}/cancel`, {});
+  }
+  /**
+   * Permanently delete a link. Only allowed when the link has never been used —
+   * otherwise the API returns 422 and you should {@link cancel} it instead.
+   */
+  delete(id) {
+    return this.http.delete(`/v1/payment-links/${encodeURIComponent(id)}`);
   }
 };
 
@@ -701,6 +772,7 @@ var PayBridgeNP = class {
   /** Static webhook utility — no instance required for signature verification. */
   static webhooks = new WebhooksResource();
   _checkout;
+  _paymentLinks;
   _payments;
   _refunds;
   _webhooks;
@@ -718,6 +790,10 @@ var PayBridgeNP = class {
   }
   get checkout() {
     return this._checkout ??= new CheckoutResource(this.http);
+  }
+  /** Reusable hosted payment pages — create / list / retrieve / update / cancel / delete. */
+  get paymentLinks() {
+    return this._paymentLinks ??= new PaymentLinksResource(this.http);
   }
   get payments() {
     return this._payments ??= new PaymentsResource(this.http);
@@ -763,7 +839,7 @@ var PayBridgeNP = class {
 };
 
 // src/index.ts
-var SDK_VERSION = "5.0.0";
+var SDK_VERSION = "5.1.0";
 export {
   AccountError,
   ApiError,

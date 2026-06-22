@@ -32,6 +32,16 @@ export type {
   CheckoutSession,
   CheckoutSessionStatus,
   ExpiredCheckoutSession,
+  RetrievedCheckoutSession,
+  SessionProvider,
+  SessionAddress,
+  ListSessionsParams,
+  PaymentLink,
+  PaymentLinkWithStats,
+  CreatePaymentLinkParams,
+  UpdatePaymentLinkParams,
+  ListPaymentLinksParams,
+  DeletedPaymentLink,
   Payment,
   ListPaymentsParams,
   PaginatedResponse,
@@ -127,4 +137,4 @@ export type {
   BillingListResponse,
 } from "./types/billing";
 
-export const SDK_VERSION = "5.0.0" as const;
+export const SDK_VERSION = "5.1.0" as const;

@@ -174,3 +174,164 @@ export type WebhookDelivery = {
   responseBody: string | null;
   createdAt: string;
 };
+
+// ── Sessions (read) ───────────────────────────────────────────────────────────
+//
+// Returned by `client.checkout.retrieve(id)` and `client.checkout.list()`,
+// which hit the read-only `/v1/sessions` endpoints. NOTE: unlike the snake_case
+// `CheckoutSession` create response above, these read shapes use **camelCase**
+// keys (`customerName`, `expiresAt`, …). That mirrors the live API exactly — the
+// casing difference is a known legacy quirk, not an SDK choice. `provider` here
+// spans all five providers (sessions can target connectips/hamropay too).
+
+export type SessionProvider = "esewa" | "khalti" | "connectips" | "hamropay" | "fonepay";
+
+/** Billing address as returned on a retrieved session (all but line1/city nullable). */
+export type SessionAddress = {
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+};
+
+/** Full checkout session as returned by `/v1/sessions`. */
+export type RetrievedCheckoutSession = {
+  id: string;
+  livemode: boolean;
+  mode: "sandbox" | "live";
+  flow: CheckoutFlow;
+  amount: number;
+  currency: string;
+  provider: SessionProvider | null;
+  status: CheckoutSessionStatus;
+  description: string | null;
+  metadata: Metadata | null;
+  customerName: string | null;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  collectAddress: boolean;
+  customerAddress: SessionAddress | null;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListSessionsParams = {
+  limit?: number;
+  offset?: number;
+  status?: CheckoutSessionStatus;
+};
+
+// ── Payment Links ─────────────────────────────────────────────────────────────
+//
+// Like sessions, payment-link responses use camelCase keys. `stats` (on the
+// single-link retrieve) is the one nested object that stays snake_case, matching
+// the API.
+
+/** A reusable hosted payment page. */
+export type PaymentLink = {
+  id: string;
+  livemode: boolean;
+  mode: "sandbox" | "live";
+  title: string;
+  description: string | null;
+  /** Fixed amount in paisa, or `null` when the customer enters their own amount. */
+  amount: number | null;
+  minAmount: number | null;
+  maxAmount: number | null;
+  currency: string;
+  provider: SessionProvider | null;
+  active: boolean;
+  maxUses: number | null;
+  usedCount: number;
+  expiresAt: string | null;
+  redirectUrl: string | null;
+  inactiveMessage: string | null;
+  customerName: string | null;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  collectAddress: boolean;
+  customerLine1: string | null;
+  customerLine2: string | null;
+  customerCity: string | null;
+  customerState: string | null;
+  customerPostalCode: string | null;
+  customerCountry: string | null;
+  referenceId: string | null;
+  metadata: Metadata | null;
+  /** Public hosted payment page for this link. */
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Returned by `client.paymentLinks.retrieve(id)` — a link plus aggregated stats. */
+export type PaymentLinkWithStats = PaymentLink & {
+  stats: {
+    views: number;
+    used_count: number;
+    conversion_rate: number;
+  };
+};
+
+export type CreatePaymentLinkParams = {
+  title: string;
+  description?: string | null;
+  /** Fixed amount in paisa. Omit and use `minAmount`/`maxAmount` for a customer-entered amount. */
+  amount?: number | null;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+  currency?: "NPR";
+  provider?: SessionProvider | null;
+  maxUses?: number | null;
+  expiresAt?: string | null;
+  redirectUrl?: string | null;
+  inactiveMessage?: string | null;
+  metadata?: Metadata | null;
+  customerName?: string | null;
+  customerEmail?: string | null;
+  customerPhone?: string | null;
+  referenceId?: string | null;
+  collectAddress?: boolean;
+  customerLine1?: string | null;
+  customerLine2?: string | null;
+  customerCity?: string | null;
+  customerState?: string | null;
+  customerPostalCode?: string | null;
+  customerCountry?: string | null;
+};
+
+export type UpdatePaymentLinkParams = {
+  title?: string;
+  description?: string | null;
+  /** Set `false` to deactivate the link (or use `cancel`). */
+  active?: boolean;
+  inactiveMessage?: string | null;
+  expiresAt?: string | null;
+  maxUses?: number | null;
+  redirectUrl?: string | null;
+  referenceId?: string | null;
+  collectAddress?: boolean;
+  customerLine1?: string | null;
+  customerLine2?: string | null;
+  customerCity?: string | null;
+  customerState?: string | null;
+  customerPostalCode?: string | null;
+  customerCountry?: string | null;
+};
+
+export type ListPaymentLinksParams = {
+  limit?: number;
+  offset?: number;
+  active?: boolean;
+};
+
+/** Returned by `client.paymentLinks.delete(id)`. */
+export type DeletedPaymentLink = {
+  deleted: boolean;
+  id: string;
+  /** Stamped by the API on any object that has an `id`. */
+  livemode: boolean;
+};

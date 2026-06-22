@@ -15,12 +15,12 @@ bun add @paybridge-np/sdk
 ```typescript
 import { PayBridgeNP } from "@paybridge-np/sdk";
 
-const client = new PayBridgeNP({
+const paybridgenp = new PayBridgeNP({
   apiKey: "sk_live_...", // from dashboard.paybridgenp.com
 });
 
 // Create a checkout session
-const session = await client.checkout.create({
+const session = await paybridgenp.checkout.create({
   amount: 250000, // NPR 2,500 in paisa
   currency: "NPR",
   returnUrl: "https://mystore.com/success",
@@ -38,30 +38,48 @@ const session = await client.checkout.create({
 
 // Expire a previously-created session so its URL stops being payable
 // (use when you mint a fresh session for the same purchase).
-await client.checkout.expire("cs_xxx");
+await paybridgenp.checkout.expire("cs_xxx");
+
+// Retrieve or list checkout sessions (read-only)
+const session = await paybridgenp.checkout.retrieve("cs_xxx");
+const sessions = await paybridgenp.checkout.list({ limit: 20, status: "success" });
 ```
 
 ## Payments
 
 ```typescript
 // List payments
-const { data, meta } = await client.payments.list({ limit: 20 });
+const { data, meta } = await paybridgenp.payments.list({ limit: 20 });
 
 // Get a single payment
-const payment = await client.payments.get("pay_xxx");
+const payment = await paybridgenp.payments.retrieve("pay_xxx");
+```
+
+## Payment links
+
+```typescript
+// Create a reusable hosted payment page
+const link = await paybridgenp.paymentLinks.create({ title: "Donation", amount: 50000 });
+
+// List, retrieve (with view/conversion stats), update, cancel, or delete
+const { data } = await paybridgenp.paymentLinks.list({ active: true });
+const detail = await paybridgenp.paymentLinks.retrieve(link.id); // detail.stats
+await paybridgenp.paymentLinks.update(link.id, { active: false });
+await paybridgenp.paymentLinks.cancel(link.id); // deactivate, keep for records
+await paybridgenp.paymentLinks.delete(link.id); // only if never used
 ```
 
 ## Webhooks
 
 ```typescript
 // Register an endpoint
-const endpoint = await client.webhooks.register({
-  url: "https://mystore.com/webhooks/paybridge",
+const endpoint = await paybridgenp.webhooks.register({
+  url: "https://mystore.com/webhooks/paybridgenp",
   events: ["payment.succeeded", "payment.failed"],
 });
 
 // Verify a webhook signature
-const event = client.webhooks.verify(rawBody, signatureHeader, endpointSecret);
+const event = paybridgenp.webhooks.verify(rawBody, signatureHeader, endpointSecret);
 ```
 
 ## Sandbox mode
@@ -74,7 +92,7 @@ Use a sandbox API key (`sk_sandbox_...`) to test without real money. The SDK aut
 import { PayBridgeError, AuthenticationError } from "@paybridge-np/sdk";
 
 try {
-  await client.checkout.create({ ... });
+  await paybridgenp.checkout.create({ ... });
 } catch (err) {
   if (err instanceof AuthenticationError) {
     // Invalid API key

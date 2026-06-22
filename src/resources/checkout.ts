@@ -3,6 +3,9 @@ import type {
   CheckoutSession,
   CreateCheckoutParams,
   ExpiredCheckoutSession,
+  ListSessionsParams,
+  PaginatedResponse,
+  RetrievedCheckoutSession,
 } from "../types";
 
 export class CheckoutResource {
@@ -10,6 +13,34 @@ export class CheckoutResource {
 
   create(params: CreateCheckoutParams): Promise<CheckoutSession> {
     return this.http.post<CheckoutSession>("/v1/checkout", params);
+  }
+
+  /**
+   * Retrieve a checkout session by ID, including its current status, amount,
+   * customer, and any collected address. Read-only — sessions are created via
+   * {@link create}. Hits `GET /v1/sessions/{id}`.
+   *
+   * Note: this richer read shape uses camelCase keys (`customerName`,
+   * `expiresAt`, …), unlike the snake_case create response.
+   */
+  retrieve(id: string): Promise<RetrievedCheckoutSession> {
+    return this.http.get<RetrievedCheckoutSession>(`/v1/sessions/${encodeURIComponent(id)}`);
+  }
+
+  /**
+   * List checkout sessions for the authenticated project, newest first.
+   * Optionally filter by `status` and page with `limit`/`offset`. Hits
+   * `GET /v1/sessions`.
+   */
+  list(params: ListSessionsParams = {}): Promise<PaginatedResponse<RetrievedCheckoutSession>> {
+    const qs = new URLSearchParams();
+    if (params.limit !== undefined) qs.set("limit", String(params.limit));
+    if (params.offset !== undefined) qs.set("offset", String(params.offset));
+    if (params.status !== undefined) qs.set("status", params.status);
+    const query = qs.toString();
+    return this.http.get<PaginatedResponse<RetrievedCheckoutSession>>(
+      `/v1/sessions${query ? `?${query}` : ""}`,
+    );
   }
 
   /**

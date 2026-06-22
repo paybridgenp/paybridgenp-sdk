@@ -1,5 +1,6 @@
 import { HttpClient } from "./http";
 import { CheckoutResource } from "./resources/checkout";
+import { PaymentLinksResource } from "./resources/paymentLinks";
 import { PaymentsResource } from "./resources/payments";
 import { RefundsResource } from "./resources/refunds";
 import { WebhooksResource } from "./resources/webhooks";
@@ -21,6 +22,7 @@ export class PayBridgeNP {
   static readonly webhooks = new WebhooksResource();
 
   private _checkout?: CheckoutResource;
+  private _paymentLinks?: PaymentLinksResource;
   private _payments?: PaymentsResource;
   private _refunds?: RefundsResource;
   private _webhooks?: WebhooksResource;
@@ -40,6 +42,11 @@ export class PayBridgeNP {
 
   get checkout(): CheckoutResource {
     return (this._checkout ??= new CheckoutResource(this.http));
+  }
+
+  /** Reusable hosted payment pages — create / list / retrieve / update / cancel / delete. */
+  get paymentLinks(): PaymentLinksResource {
+    return (this._paymentLinks ??= new PaymentLinksResource(this.http));
   }
 
   get payments(): PaymentsResource {

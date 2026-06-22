@@ -135,6 +135,142 @@ type WebhookDelivery = {
     responseBody: string | null;
     createdAt: string;
 };
+type SessionProvider = "esewa" | "khalti" | "connectips" | "hamropay" | "fonepay";
+/** Billing address as returned on a retrieved session (all but line1/city nullable). */
+type SessionAddress = {
+    line1: string;
+    line2: string | null;
+    city: string;
+    state: string | null;
+    postalCode: string | null;
+    country: string | null;
+};
+/** Full checkout session as returned by `/v1/sessions`. */
+type RetrievedCheckoutSession = {
+    id: string;
+    livemode: boolean;
+    mode: "sandbox" | "live";
+    flow: CheckoutFlow;
+    amount: number;
+    currency: string;
+    provider: SessionProvider | null;
+    status: CheckoutSessionStatus;
+    description: string | null;
+    metadata: Metadata | null;
+    customerName: string | null;
+    customerEmail: string | null;
+    customerPhone: string | null;
+    collectAddress: boolean;
+    customerAddress: SessionAddress | null;
+    expiresAt: string;
+    createdAt: string;
+    updatedAt: string;
+};
+type ListSessionsParams = {
+    limit?: number;
+    offset?: number;
+    status?: CheckoutSessionStatus;
+};
+/** A reusable hosted payment page. */
+type PaymentLink = {
+    id: string;
+    livemode: boolean;
+    mode: "sandbox" | "live";
+    title: string;
+    description: string | null;
+    /** Fixed amount in paisa, or `null` when the customer enters their own amount. */
+    amount: number | null;
+    minAmount: number | null;
+    maxAmount: number | null;
+    currency: string;
+    provider: SessionProvider | null;
+    active: boolean;
+    maxUses: number | null;
+    usedCount: number;
+    expiresAt: string | null;
+    redirectUrl: string | null;
+    inactiveMessage: string | null;
+    customerName: string | null;
+    customerEmail: string | null;
+    customerPhone: string | null;
+    collectAddress: boolean;
+    customerLine1: string | null;
+    customerLine2: string | null;
+    customerCity: string | null;
+    customerState: string | null;
+    customerPostalCode: string | null;
+    customerCountry: string | null;
+    referenceId: string | null;
+    metadata: Metadata | null;
+    /** Public hosted payment page for this link. */
+    url: string;
+    createdAt: string;
+    updatedAt: string;
+};
+/** Returned by `client.paymentLinks.retrieve(id)` — a link plus aggregated stats. */
+type PaymentLinkWithStats = PaymentLink & {
+    stats: {
+        views: number;
+        used_count: number;
+        conversion_rate: number;
+    };
+};
+type CreatePaymentLinkParams = {
+    title: string;
+    description?: string | null;
+    /** Fixed amount in paisa. Omit and use `minAmount`/`maxAmount` for a customer-entered amount. */
+    amount?: number | null;
+    minAmount?: number | null;
+    maxAmount?: number | null;
+    currency?: "NPR";
+    provider?: SessionProvider | null;
+    maxUses?: number | null;
+    expiresAt?: string | null;
+    redirectUrl?: string | null;
+    inactiveMessage?: string | null;
+    metadata?: Metadata | null;
+    customerName?: string | null;
+    customerEmail?: string | null;
+    customerPhone?: string | null;
+    referenceId?: string | null;
+    collectAddress?: boolean;
+    customerLine1?: string | null;
+    customerLine2?: string | null;
+    customerCity?: string | null;
+    customerState?: string | null;
+    customerPostalCode?: string | null;
+    customerCountry?: string | null;
+};
+type UpdatePaymentLinkParams = {
+    title?: string;
+    description?: string | null;
+    /** Set `false` to deactivate the link (or use `cancel`). */
+    active?: boolean;
+    inactiveMessage?: string | null;
+    expiresAt?: string | null;
+    maxUses?: number | null;
+    redirectUrl?: string | null;
+    referenceId?: string | null;
+    collectAddress?: boolean;
+    customerLine1?: string | null;
+    customerLine2?: string | null;
+    customerCity?: string | null;
+    customerState?: string | null;
+    customerPostalCode?: string | null;
+    customerCountry?: string | null;
+};
+type ListPaymentLinksParams = {
+    limit?: number;
+    offset?: number;
+    active?: boolean;
+};
+/** Returned by `client.paymentLinks.delete(id)`. */
+type DeletedPaymentLink = {
+    deleted: boolean;
+    id: string;
+    /** Stamped by the API on any object that has an `id`. */
+    livemode: boolean;
+};
 
 declare class HttpClient {
     private readonly baseUrl;
@@ -154,6 +290,21 @@ declare class CheckoutResource {
     constructor(http: HttpClient);
     create(params: CreateCheckoutParams): Promise<CheckoutSession>;
     /**
+     * Retrieve a checkout session by ID, including its current status, amount,
+     * customer, and any collected address. Read-only — sessions are created via
+     * {@link create}. Hits `GET /v1/sessions/{id}`.
+     *
+     * Note: this richer read shape uses camelCase keys (`customerName`,
+     * `expiresAt`, …), unlike the snake_case create response.
+     */
+    retrieve(id: string): Promise<RetrievedCheckoutSession>;
+    /**
+     * List checkout sessions for the authenticated project, newest first.
+     * Optionally filter by `status` and page with `limit`/`offset`. Hits
+     * `GET /v1/sessions`.
+     */
+    list(params?: ListSessionsParams): Promise<PaginatedResponse<RetrievedCheckoutSession>>;
+    /**
      * Expire a checkout session so it can no longer accept payment.
      *
      * Use this when you mint a fresh checkout session for a logical purchase
@@ -167,6 +318,34 @@ declare class CheckoutResource {
      * returns the current row state without error.
      */
     expire(id: string): Promise<ExpiredCheckoutSession>;
+}
+
+/**
+ * Reusable hosted payment pages. Mirrors the public `/v1/payment-links` routes
+ * (all require an API key with the `links:read` / `links:write` scope).
+ */
+declare class PaymentLinksResource {
+    private readonly http;
+    constructor(http: HttpClient);
+    /** Create a payment link. Returns the created link (HTTP 201). */
+    create(params: CreatePaymentLinkParams): Promise<PaymentLink>;
+    /** List payment links for the project, newest first. Filter with `active`. */
+    list(params?: ListPaymentLinksParams): Promise<PaginatedResponse<PaymentLink>>;
+    /** Retrieve a single link by ID, including aggregated view/conversion stats. */
+    retrieve(id: string): Promise<PaymentLinkWithStats>;
+    /** Update a link's editable fields. Only the keys you pass are changed. */
+    update(id: string, params: UpdatePaymentLinkParams): Promise<PaymentLink>;
+    /**
+     * Cancel (deactivate) a link so it can no longer accept payments, while
+     * keeping it and its history for your records. The recommended way to retire
+     * a link that has already been used.
+     */
+    cancel(id: string): Promise<PaymentLink>;
+    /**
+     * Permanently delete a link. Only allowed when the link has never been used —
+     * otherwise the API returns 422 and you should {@link cancel} it instead.
+     */
+    delete(id: string): Promise<DeletedPaymentLink>;
 }
 
 declare class PaymentsResource {
@@ -946,6 +1125,7 @@ declare class PayBridgeNP {
     /** Static webhook utility — no instance required for signature verification. */
     static readonly webhooks: WebhooksResource;
     private _checkout?;
+    private _paymentLinks?;
     private _payments?;
     private _refunds?;
     private _webhooks?;
@@ -960,6 +1140,8 @@ declare class PayBridgeNP {
     private _qr?;
     constructor(config: PayBridgeConfig);
     get checkout(): CheckoutResource;
+    /** Reusable hosted payment pages — create / list / retrieve / update / cancel / delete. */
+    get paymentLinks(): PaymentLinksResource;
     get payments(): PaymentsResource;
     get refunds(): RefundsResource;
     get webhooks(): WebhooksResource;
@@ -1071,6 +1253,6 @@ declare const PayBridgeNotFoundError: typeof InvalidRequestError;
  */
 declare function parseErrorResponse(statusCode: number, body: Record<string, unknown> | null, retryAfterHeader: string | null): PayBridgeError;
 
-declare const SDK_VERSION: "5.0.0";
+declare const SDK_VERSION: "5.1.0";
 
-export { AccountError, type AggregationMethod, ApiError, type ApplyCouponParams, AuthenticationError, type BillingCustomer, type BillingListResponse, type BillingScheme, type CancelSubscriptionParams, type ChangePlanParams, type ChangePlanResult, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, ConnectionError, type Coupon, type CouponDiscountType, type CouponDuration, type CreateCheckoutParams, type CreateCouponParams, type CreateCustomerParams, type CreateDunningPolicyParams, type CreateFonepayQrParams, type CreateInvoiceItemParams, type CreatePlanParams, type CreatePromotionCodeParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type CustomerRef, type Discount, type DunningAttempt, type DunningFinalAction, type DunningInvoiceStatus, type DunningPolicy, type EndTrialResponse, type ExpiredCheckoutSession, type ExtendTrialParams, type FonepayQrCustomer, type FonepayQrSession, IdempotencyError, type IntervalUnit, InvalidRequestError, type Invoice, type InvoiceItem, type InvoiceStatus, type InvoiceSubscriptionRef, type ListCouponsParams, type ListCustomersParams, type ListInvoicesParams, type ListPaymentsParams, type ListPlansParams, type ListPromotionCodesParams, type ListRefundsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseDetail, type PauseSubscriptionParams, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorType as PayBridgeErrorCode, type PayBridgeErrorType, PayBridgeInvalidRequestError, PayBridgeNP, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentStatus, PermissionError, type Plan, type PlanRef, type PromotionCode, type ProrationBehavior, type ProrationPreview, type Provider, RateLimitError, type Refund, type RefundReason, type RefundStatus, type ReportUsageParams, SDK_VERSION, SignatureVerificationError, type Subscription, type SubscriptionLatestInvoice, type SubscriptionStatus, type SuspensionDetail, type TaxSettings, type UpdateCustomerParams, type UpdateDunningPolicyParams, type UpdatePlanParams, type UpdateTaxSettingsParams, type UsageRecord, type UsageReportAck, type UsageSummary, type ValidatePromotionCodeParams, type ValidatePromotionCodeResponse, type WebhookEndpoint, type WebhookEvent, type WebhookEventType, parseErrorResponse };
+export { AccountError, type AggregationMethod, ApiError, type ApplyCouponParams, AuthenticationError, type BillingCustomer, type BillingListResponse, type BillingScheme, type CancelSubscriptionParams, type ChangePlanParams, type ChangePlanResult, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, ConnectionError, type Coupon, type CouponDiscountType, type CouponDuration, type CreateCheckoutParams, type CreateCouponParams, type CreateCustomerParams, type CreateDunningPolicyParams, type CreateFonepayQrParams, type CreateInvoiceItemParams, type CreatePaymentLinkParams, type CreatePlanParams, type CreatePromotionCodeParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type CustomerRef, type DeletedPaymentLink, type Discount, type DunningAttempt, type DunningFinalAction, type DunningInvoiceStatus, type DunningPolicy, type EndTrialResponse, type ExpiredCheckoutSession, type ExtendTrialParams, type FonepayQrCustomer, type FonepayQrSession, IdempotencyError, type IntervalUnit, InvalidRequestError, type Invoice, type InvoiceItem, type InvoiceStatus, type InvoiceSubscriptionRef, type ListCouponsParams, type ListCustomersParams, type ListInvoicesParams, type ListPaymentLinksParams, type ListPaymentsParams, type ListPlansParams, type ListPromotionCodesParams, type ListRefundsParams, type ListSessionsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseDetail, type PauseSubscriptionParams, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorType as PayBridgeErrorCode, type PayBridgeErrorType, PayBridgeInvalidRequestError, PayBridgeNP, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentLink, type PaymentLinkWithStats, type PaymentStatus, PermissionError, type Plan, type PlanRef, type PromotionCode, type ProrationBehavior, type ProrationPreview, type Provider, RateLimitError, type Refund, type RefundReason, type RefundStatus, type ReportUsageParams, type RetrievedCheckoutSession, SDK_VERSION, type SessionAddress, type SessionProvider, SignatureVerificationError, type Subscription, type SubscriptionLatestInvoice, type SubscriptionStatus, type SuspensionDetail, type TaxSettings, type UpdateCustomerParams, type UpdateDunningPolicyParams, type UpdatePaymentLinkParams, type UpdatePlanParams, type UpdateTaxSettingsParams, type UsageRecord, type UsageReportAck, type UsageSummary, type ValidatePromotionCodeParams, type ValidatePromotionCodeResponse, type WebhookEndpoint, type WebhookEvent, type WebhookEventType, parseErrorResponse };

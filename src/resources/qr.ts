@@ -13,4 +13,18 @@ export class QrResource {
   fonepay(params: CreateFonepayQrParams): Promise<FonepayQrSession> {
     return this.http.post<FonepayQrSession>("/v1/qr/fonepay", params);
   }
+
+  /**
+   * Refresh a Direct-QR session: regenerate a fresh Fonepay QR for the SAME
+   * session (same `id`, `events_url`, and webhook) without spawning a new
+   * session. The Fonepay QR display window is only ~3 minutes, so call this
+   * when `qr.expired` fires (or proactively) to keep a scannable QR on screen.
+   * Takes no body — the amount and customer already live on the session. The
+   * session's overall lifetime is unchanged.
+   *
+   * Premium feature — requires the merchant to be on the Premium plan.
+   */
+  refresh(id: string): Promise<FonepayQrSession> {
+    return this.http.post<FonepayQrSession>(`/v1/qr/${encodeURIComponent(id)}/refresh`, {});
+  }
 }

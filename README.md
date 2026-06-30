@@ -69,6 +69,24 @@ await paybridgenp.paymentLinks.cancel(link.id); // deactivate, keep for records
 await paybridgenp.paymentLinks.delete(link.id); // only if never used
 ```
 
+## Direct-QR (Fonepay)
+
+Premium feature — mint a Fonepay QR server-side and embed it in your own UI, skipping the hosted checkout page. Listen for `qr.scanned` / `qr.paid` / `qr.expired` on the returned `events_url` (SSE).
+
+```typescript
+// Create a Direct-QR session
+const qr = await paybridgenp.qr.fonepay({
+  amount: 10000, // paisa
+  customer: { name: "Aarav Sharma", email: "aarav@example.com" },
+});
+// qr.qr_image (PNG data URL), qr.qr_message, qr.events_url, qr.expires_at
+
+// The QR display window is ~3 min. When it lapses (or proactively), refresh it
+// for the SAME session — same id, events_url, and webhook, so your EventSource
+// stays connected. The session's overall lifetime is not extended.
+const fresh = await paybridgenp.qr.refresh(qr.id);
+```
+
 ## Webhooks
 
 ```typescript

@@ -170,7 +170,7 @@ var HttpClient = class {
     const headers = {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
-      "User-Agent": "PayBridgeNP-SDK/3.0.0"
+      "User-Agent": "PayBridgeNP-SDK/5.2.0"
     };
     let attempt = 0;
     while (true) {
@@ -764,6 +764,19 @@ var QrResource = class {
   fonepay(params) {
     return this.http.post("/v1/qr/fonepay", params);
   }
+  /**
+   * Refresh a Direct-QR session: regenerate a fresh Fonepay QR for the SAME
+   * session (same `id`, `events_url`, and webhook) without spawning a new
+   * session. The Fonepay QR display window is only ~3 minutes, so call this
+   * when `qr.expired` fires (or proactively) to keep a scannable QR on screen.
+   * Takes no body — the amount and customer already live on the session. The
+   * session's overall lifetime is unchanged.
+   *
+   * Premium feature — requires the merchant to be on the Premium plan.
+   */
+  refresh(id) {
+    return this.http.post(`/v1/qr/${encodeURIComponent(id)}/refresh`, {});
+  }
 };
 
 // src/client.ts
@@ -839,7 +852,7 @@ var PayBridgeNP = class {
 };
 
 // src/index.ts
-var SDK_VERSION = "5.1.0";
+var SDK_VERSION = "5.2.0";
 export {
   AccountError,
   ApiError,

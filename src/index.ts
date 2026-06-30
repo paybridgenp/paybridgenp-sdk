@@ -137,4 +137,4 @@ export type {
   BillingListResponse,
 } from "./types/billing";
 
-export const SDK_VERSION = "5.1.0" as const;
+export const SDK_VERSION = "5.2.0" as const;

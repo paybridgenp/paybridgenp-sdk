@@ -1118,6 +1118,17 @@ declare class QrResource {
      * Premium feature — requires the merchant to be on the Premium plan.
      */
     fonepay(params: CreateFonepayQrParams): Promise<FonepayQrSession>;
+    /**
+     * Refresh a Direct-QR session: regenerate a fresh Fonepay QR for the SAME
+     * session (same `id`, `events_url`, and webhook) without spawning a new
+     * session. The Fonepay QR display window is only ~3 minutes, so call this
+     * when `qr.expired` fires (or proactively) to keep a scannable QR on screen.
+     * Takes no body — the amount and customer already live on the session. The
+     * session's overall lifetime is unchanged.
+     *
+     * Premium feature — requires the merchant to be on the Premium plan.
+     */
+    refresh(id: string): Promise<FonepayQrSession>;
 }
 
 declare class PayBridgeNP {
@@ -1253,6 +1264,6 @@ declare const PayBridgeNotFoundError: typeof InvalidRequestError;
  */
 declare function parseErrorResponse(statusCode: number, body: Record<string, unknown> | null, retryAfterHeader: string | null): PayBridgeError;
 
-declare const SDK_VERSION: "5.1.0";
+declare const SDK_VERSION: "5.2.0";
 
 export { AccountError, type AggregationMethod, ApiError, type ApplyCouponParams, AuthenticationError, type BillingCustomer, type BillingListResponse, type BillingScheme, type CancelSubscriptionParams, type ChangePlanParams, type ChangePlanResult, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, ConnectionError, type Coupon, type CouponDiscountType, type CouponDuration, type CreateCheckoutParams, type CreateCouponParams, type CreateCustomerParams, type CreateDunningPolicyParams, type CreateFonepayQrParams, type CreateInvoiceItemParams, type CreatePaymentLinkParams, type CreatePlanParams, type CreatePromotionCodeParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type CustomerRef, type DeletedPaymentLink, type Discount, type DunningAttempt, type DunningFinalAction, type DunningInvoiceStatus, type DunningPolicy, type EndTrialResponse, type ExpiredCheckoutSession, type ExtendTrialParams, type FonepayQrCustomer, type FonepayQrSession, IdempotencyError, type IntervalUnit, InvalidRequestError, type Invoice, type InvoiceItem, type InvoiceStatus, type InvoiceSubscriptionRef, type ListCouponsParams, type ListCustomersParams, type ListInvoicesParams, type ListPaymentLinksParams, type ListPaymentsParams, type ListPlansParams, type ListPromotionCodesParams, type ListRefundsParams, type ListSessionsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseDetail, type PauseSubscriptionParams, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorType as PayBridgeErrorCode, type PayBridgeErrorType, PayBridgeInvalidRequestError, PayBridgeNP, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentLink, type PaymentLinkWithStats, type PaymentStatus, PermissionError, type Plan, type PlanRef, type PromotionCode, type ProrationBehavior, type ProrationPreview, type Provider, RateLimitError, type Refund, type RefundReason, type RefundStatus, type ReportUsageParams, type RetrievedCheckoutSession, SDK_VERSION, type SessionAddress, type SessionProvider, SignatureVerificationError, type Subscription, type SubscriptionLatestInvoice, type SubscriptionStatus, type SuspensionDetail, type TaxSettings, type UpdateCustomerParams, type UpdateDunningPolicyParams, type UpdatePaymentLinkParams, type UpdatePlanParams, type UpdateTaxSettingsParams, type UsageRecord, type UsageReportAck, type UsageSummary, type ValidatePromotionCodeParams, type ValidatePromotionCodeResponse, type WebhookEndpoint, type WebhookEvent, type WebhookEventType, parseErrorResponse };

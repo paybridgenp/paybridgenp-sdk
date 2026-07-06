@@ -1006,11 +1006,52 @@ declare class SubscriptionsResource {
     updateQuantity(id: string, quantity: number): Promise<Subscription>;
 }
 
+type FonepayQrCustomer = {
+    name: string;
+    email: string;
+    phone?: string;
+    address?: {
+        line1: string;
+        city: string;
+        line2?: string;
+        state?: string;
+        postalCode?: string;
+        country?: string;
+    };
+};
+type CreateFonepayQrParams = {
+    amount: number;
+    currency?: "NPR";
+    customer: FonepayQrCustomer;
+    metadata?: Metadata;
+};
+type FonepayQrSession = {
+    id: string;
+    amount: number;
+    currency: string;
+    provider: "fonepay";
+    status: "initiated";
+    qr_message: string;
+    qr_image: string;
+    events_url: string;
+    expires_at: string;
+};
+
 declare class InvoicesResource {
     private readonly http;
     constructor(http: HttpClient);
     list(params?: ListInvoicesParams): Promise<PaginatedBillingResponse<Invoice>>;
     get(id: string): Promise<Invoice>;
+    /**
+     * Mint a Fonepay Direct-QR to pay this invoice. The customer scans it (in your
+     * own UI / at a counter) and on success the invoice is marked paid and the
+     * subscription activates (`incomplete`→`active`) — the same outcome as the
+     * hosted bill page, just collected via an embedded QR. Returns a normal
+     * Direct-QR session (use its `events_url` SSE stream + `qr.refresh(id)`).
+     *
+     * Premium feature; requires the `billing:write` scope and Fonepay configured.
+     */
+    qr(id: string): Promise<FonepayQrSession>;
 }
 
 declare class CouponsResource {
@@ -1076,37 +1117,6 @@ declare class TaxResource {
     /** Update tax settings (enabled, rate, registration number, label). */
     updateSettings(params: UpdateTaxSettingsParams): Promise<TaxSettings>;
 }
-
-type FonepayQrCustomer = {
-    name: string;
-    email: string;
-    phone?: string;
-    address?: {
-        line1: string;
-        city: string;
-        line2?: string;
-        state?: string;
-        postalCode?: string;
-        country?: string;
-    };
-};
-type CreateFonepayQrParams = {
-    amount: number;
-    currency?: "NPR";
-    customer: FonepayQrCustomer;
-    metadata?: Metadata;
-};
-type FonepayQrSession = {
-    id: string;
-    amount: number;
-    currency: string;
-    provider: "fonepay";
-    status: "initiated";
-    qr_message: string;
-    qr_image: string;
-    events_url: string;
-    expires_at: string;
-};
 
 declare class QrResource {
     private readonly http;

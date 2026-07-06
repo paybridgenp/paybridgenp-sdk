@@ -170,7 +170,7 @@ var HttpClient = class {
     const headers = {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
-      "User-Agent": "PayBridgeNP-SDK/5.2.0"
+      "User-Agent": "PayBridgeNP-SDK/5.3.0"
     };
     let attempt = 0;
     while (true) {
@@ -616,6 +616,18 @@ var InvoicesResource = class {
   }
   get(id) {
     return this.http.get(`/v1/billing/invoices/${id}`);
+  }
+  /**
+   * Mint a Fonepay Direct-QR to pay this invoice. The customer scans it (in your
+   * own UI / at a counter) and on success the invoice is marked paid and the
+   * subscription activates (`incomplete`→`active`) — the same outcome as the
+   * hosted bill page, just collected via an embedded QR. Returns a normal
+   * Direct-QR session (use its `events_url` SSE stream + `qr.refresh(id)`).
+   *
+   * Premium feature; requires the `billing:write` scope and Fonepay configured.
+   */
+  qr(id) {
+    return this.http.post(`/v1/billing/invoices/${encodeURIComponent(id)}/qr`, {});
   }
 };
 

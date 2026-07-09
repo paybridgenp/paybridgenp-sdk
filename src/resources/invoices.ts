@@ -4,6 +4,7 @@ import type {
   Invoice,
   PaginatedBillingResponse,
 } from "../types/billing";
+import type { FonepayQrSession } from "../types/qr";
 
 export class InvoicesResource {
   constructor(private readonly http: HttpClient) {}
@@ -24,5 +25,18 @@ export class InvoicesResource {
 
   get(id: string): Promise<Invoice> {
     return this.http.get<Invoice>(`/v1/billing/invoices/${id}`);
+  }
+
+  /**
+   * Mint a Fonepay Direct-QR to pay this invoice. The customer scans it (in your
+   * own UI / at a counter) and on success the invoice is marked paid and the
+   * subscription activates (`incomplete`→`active`) — the same outcome as the
+   * hosted bill page, just collected via an embedded QR. Returns a normal
+   * Direct-QR session (use its `events_url` SSE stream + `qr.refresh(id)`).
+   *
+   * Premium feature; requires the `billing:write` scope and Fonepay configured.
+   */
+  qr(id: string): Promise<FonepayQrSession> {
+    return this.http.post<FonepayQrSession>(`/v1/billing/invoices/${encodeURIComponent(id)}/qr`, {});
   }
 }

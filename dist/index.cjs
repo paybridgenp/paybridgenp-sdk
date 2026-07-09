@@ -223,7 +223,7 @@ var HttpClient = class {
     const headers = {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
-      "User-Agent": "PayBridgeNP-SDK/5.3.0"
+      "User-Agent": "PayBridgeNP-SDK/5.4.0"
     };
     let attempt = 0;
     while (true) {
@@ -917,7 +917,7 @@ var PayBridgeNP = class {
 };
 
 // src/index.ts
-var SDK_VERSION = "5.2.0";
+var SDK_VERSION = "5.4.0";
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AccountError,

@@ -91,18 +91,18 @@ const fresh = await paybridgenp.qr.refresh(qr.id);
 
 ```typescript
 // Register an endpoint
-const endpoint = await paybridgenp.webhooks.register({
+const endpoint = await paybridgenp.webhooks.create({
   url: "https://mystore.com/webhooks/paybridgenp",
   events: ["payment.succeeded", "payment.failed"],
 });
 
-// Verify a webhook signature
-const event = paybridgenp.webhooks.verify(rawBody, signatureHeader, endpointSecret);
+// Verify a webhook signature (throws PayBridgeSignatureVerificationError if invalid)
+const event = await PayBridgeNP.webhooks.constructEvent(rawBody, signatureHeader, endpointSecret);
 ```
 
 ## Sandbox mode
 
-Use a sandbox API key (`sk_sandbox_...`) to test without real money. The SDK automatically routes to sandbox endpoints.
+Use a test-mode API key (`sk_test_...`) to test without real money. Mode is determined server-side by the key prefix (`sk_test_` vs `sk_live_`) - there is nothing to configure in the SDK.
 
 ## Error handling
 
@@ -122,9 +122,9 @@ try {
 
 ## Documentation
 
-- [API Reference](https://paybridgenp.mintlify.app)
+- [API Reference](https://docs.paybridgenp.com/api-reference/errors)
 - [Dashboard](https://dashboard.paybridgenp.com)
-- [Guides](https://paybridgenp.mintlify.app/guides/sandbox-testing)
+- [Guides](https://docs.paybridgenp.com/guides/sandbox-testing)
 
 ## License
 

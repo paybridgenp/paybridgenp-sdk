@@ -126,7 +126,46 @@ export type PaginatedResponse<T> = {
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
 
-export type WebhookEventType = "payment.succeeded" | "payment.failed" | "payment.cancelled" | "payment.refunded" | "payment_link.paid";
+export type WebhookEventType =
+  // Payments
+  | "payment.succeeded"
+  | "payment.failed"
+  | "payment.cancelled"
+  | "payment.refunded"
+  | "payment_link.paid"
+  | "refund.succeeded"
+  // Subscriptions
+  | "subscription.created"
+  | "subscription.activated"
+  | "subscription.paused"
+  | "subscription.cancelled"
+  | "subscription.past_due"
+  | "subscription.expired"
+  | "subscription.plan_change_scheduled"
+  | "subscription.plan_changed"
+  | "subscription.trial_will_end"
+  | "subscription.trial_ended"
+  | "subscription.trial_extended"
+  | "subscription.discount_applied"
+  | "subscription.discount_removed"
+  // Plans
+  | "plan.created"
+  // Invoices
+  | "invoice.created"
+  | "invoice.reminder_sent"
+  | "invoice.paid"
+  | "invoice.overdue"
+  | "invoice.discount_applied"
+  | "invoice.dunning_attempt"
+  | "invoice.dunning_exhausted"
+  // Coupons + promotion codes
+  | "coupon.created"
+  | "coupon.updated"
+  | "coupon.deleted"
+  | "coupon.expired"
+  | "promotion_code.created"
+  | "promotion_code.updated"
+  | "promotion_code.redeemed";
 
 export type WebhookEvent<T = unknown> = {
   id: string;

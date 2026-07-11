@@ -917,7 +917,7 @@ var PayBridgeNP = class {
 };
 
 // src/index.ts
-var SDK_VERSION = "5.4.0";
+var SDK_VERSION = "5.5.0";
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AccountError,

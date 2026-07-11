@@ -864,7 +864,7 @@ var PayBridgeNP = class {
 };
 
 // src/index.ts
-var SDK_VERSION = "5.4.0";
+var SDK_VERSION = "5.5.0";
 export {
   AccountError,
   ApiError,

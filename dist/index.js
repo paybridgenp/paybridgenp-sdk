@@ -170,7 +170,7 @@ var HttpClient = class {
     const headers = {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
-      "User-Agent": "PayBridgeNP-SDK/5.4.0"
+      "User-Agent": "PayBridgeNP-SDK/5.5.1"
     };
     let attempt = 0;
     while (true) {
@@ -864,7 +864,7 @@ var PayBridgeNP = class {
 };
 
 // src/index.ts
-var SDK_VERSION = "5.5.0";
+var SDK_VERSION = "5.5.1";
 export {
   AccountError,
   ApiError,

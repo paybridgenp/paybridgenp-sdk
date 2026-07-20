@@ -71,7 +71,7 @@ await paybridgenp.paymentLinks.delete(link.id); // only if never used
 
 ## Direct-QR (Fonepay)
 
-Premium feature — mint a Fonepay QR server-side and embed it in your own UI, skipping the hosted checkout page. Listen for `qr.scanned` / `qr.paid` / `qr.expired` on the returned `events_url` (SSE).
+Premium feature - mint a Fonepay QR server-side and embed it in your own UI, skipping the hosted checkout page. Listen for `qr.scanned` / `qr.paid` / `qr.expired` on the returned `events_url` (SSE).
 
 ```typescript
 // Create a Direct-QR session
@@ -82,7 +82,7 @@ const qr = await paybridgenp.qr.fonepay({
 // qr.qr_image (PNG data URL), qr.qr_message, qr.events_url, qr.expires_at
 
 // The QR display window is ~3 min. When it lapses (or proactively), refresh it
-// for the SAME session — same id, events_url, and webhook, so your EventSource
+// for the SAME session - same id, events_url, and webhook, so your EventSource
 // stays connected. The session's overall lifetime is not extended.
 const fresh = await paybridgenp.qr.refresh(qr.id);
 ```
@@ -102,7 +102,7 @@ const event = await PayBridgeNP.webhooks.constructEvent(rawBody, signatureHeader
 
 ## Sandbox mode
 
-Use a test-mode API key (`sk_test_...`) to test without real money. Mode is determined server-side by the key prefix (`sk_test_` vs `sk_live_`) - there is nothing to configure in the SDK.
+Use a test-mode API key (`sk_test_...`) for development. eSewa and Khalti sandbox move no real money; sandbox Fonepay uses your own Fonepay credentials and moves real money within tight caps. Mode is determined server-side by the key prefix (`sk_test_` vs `sk_live_`) - there is nothing to configure in the SDK.
 
 ## Error handling
 

@@ -13,6 +13,10 @@ import { PromotionCodesResource } from "./resources/promotionCodes";
 import { DunningResource } from "./resources/dunning";
 import { TaxResource } from "./resources/tax";
 import { QrResource } from "./resources/qr";
+import { AccountResource } from "./resources/account";
+import { AnalyticsResource } from "./resources/analytics";
+import { ProvidersResource } from "./resources/providers";
+import { SmsResource } from "./resources/sms";
 import type { PayBridgeConfig } from "./types";
 
 export class PayBridgeNP {
@@ -35,6 +39,10 @@ export class PayBridgeNP {
   private _dunning?: DunningResource;
   private _tax?: TaxResource;
   private _qr?: QrResource;
+  private _account?: AccountResource;
+  private _analytics?: AnalyticsResource;
+  private _providers?: ProvidersResource;
+  private _sms?: SmsResource;
 
   constructor(config: PayBridgeConfig) {
     this.http = new HttpClient(config);
@@ -101,4 +109,16 @@ export class PayBridgeNP {
   get qr(): QrResource {
     return (this._qr ??= new QrResource(this.http));
   }
+
+  /** Account context implied by the calling API key. */
+  get account(): AccountResource { return (this._account ??= new AccountResource(this.http)); }
+
+  /** Aggregated payment and checkout KPIs. */
+  get analytics(): AnalyticsResource { return (this._analytics ??= new AnalyticsResource(this.http)); }
+
+  /** Providers enabled and configured for this project. */
+  get providers(): ProvidersResource { return (this._providers ??= new ProvidersResource(this.http)); }
+
+  /** Transactional SMS operations. */
+  get sms(): SmsResource { return (this._sms ??= new SmsResource(this.http)); }
 }

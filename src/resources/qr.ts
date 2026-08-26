@@ -10,8 +10,8 @@ export class QrResource {
    *
    * Premium feature — requires the merchant to be on the Premium plan.
    */
-  fonepay(params: CreateFonepayQrParams): Promise<FonepayQrSession> {
-    return this.http.post<FonepayQrSession>("/v1/qr/fonepay", params);
+  fonepay(params: CreateFonepayQrParams, idempotencyKey?: string): Promise<FonepayQrSession> {
+    return this.http.post<FonepayQrSession>("/v1/qr/fonepay", params, idempotencyKey);
   }
 
   /**
@@ -24,7 +24,7 @@ export class QrResource {
    *
    * Premium feature — requires the merchant to be on the Premium plan.
    */
-  refresh(id: string): Promise<FonepayQrSession> {
-    return this.http.post<FonepayQrSession>(`/v1/qr/${encodeURIComponent(id)}/refresh`, {});
+  refresh(id: string, idempotencyKey?: string): Promise<FonepayQrSession> {
+    return this.http.post<FonepayQrSession>(`/v1/qr/${encodeURIComponent(id)}/refresh`, {}, idempotencyKey);
   }
 }

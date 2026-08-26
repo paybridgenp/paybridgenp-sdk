@@ -16,8 +16,8 @@ export type AddCreditParams = {
 export class CustomersResource {
   constructor(private readonly http: HttpClient) {}
 
-  create(params: CreateCustomerParams): Promise<BillingCustomer> {
-    return this.http.post<BillingCustomer>("/v1/billing/customers", params);
+  create(params: CreateCustomerParams, idempotencyKey?: string): Promise<BillingCustomer> {
+    return this.http.post<BillingCustomer>("/v1/billing/customers", params, idempotencyKey);
   }
 
   list(params: ListCustomersParams = {}): Promise<PaginatedBillingResponse<BillingCustomer>> {
@@ -35,12 +35,12 @@ export class CustomersResource {
     return this.http.get<BillingCustomer>(`/v1/billing/customers/${id}`);
   }
 
-  update(id: string, params: UpdateCustomerParams): Promise<BillingCustomer> {
-    return this.http.patch<BillingCustomer>(`/v1/billing/customers/${id}`, params);
+  update(id: string, params: UpdateCustomerParams, idempotencyKey?: string): Promise<BillingCustomer> {
+    return this.http.patch<BillingCustomer>(`/v1/billing/customers/${id}`, params, idempotencyKey);
   }
 
-  delete(id: string): Promise<{ deleted: boolean }> {
-    return this.http.delete<{ deleted: boolean }>(`/v1/billing/customers/${id}`);
+  delete(id: string, idempotencyKey?: string): Promise<{ deleted: boolean }> {
+    return this.http.delete<{ deleted: boolean }>(`/v1/billing/customers/${id}`, idempotencyKey);
   }
 
   /**
@@ -48,7 +48,7 @@ export class CustomersResource {
    * Credits are applied automatically against future invoices before payment.
    * @param amount Amount in paisa (NPR × 100).
    */
-  addCredit(id: string, params: AddCreditParams): Promise<BillingCustomer> {
-    return this.http.post<BillingCustomer>(`/v1/billing/customers/${id}/credit`, params);
+  addCredit(id: string, params: AddCreditParams, idempotencyKey?: string): Promise<BillingCustomer> {
+    return this.http.post<BillingCustomer>(`/v1/billing/customers/${id}/credit`, params, idempotencyKey);
   }
 }

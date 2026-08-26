@@ -15,8 +15,8 @@ export class PromotionCodesResource {
    * Create a customer-facing promotion code that redeems a coupon. Code is
    * auto-uppercased server-side and unique per merchant.
    */
-  create(params: CreatePromotionCodeParams): Promise<PromotionCode> {
-    return this.http.post<PromotionCode>("/v1/billing/promotion-codes", params);
+  create(params: CreatePromotionCodeParams, idempotencyKey?: string): Promise<PromotionCode> {
+    return this.http.post<PromotionCode>("/v1/billing/promotion-codes", params, idempotencyKey);
   }
 
   list(params: ListPromotionCodesParams = {}): Promise<BillingListResponse<PromotionCode>> {
@@ -35,18 +35,19 @@ export class PromotionCodesResource {
   }
 
   /** Deactivate. Existing redemptions remain valid. */
-  deactivate(id: string): Promise<PromotionCode> {
-    return this.http.patch<PromotionCode>(`/v1/billing/promotion-codes/${id}`, { active: false });
+  deactivate(id: string, idempotencyKey?: string): Promise<PromotionCode> {
+    return this.http.patch<PromotionCode>(`/v1/billing/promotion-codes/${id}`, { active: false }, idempotencyKey);
   }
 
   /**
    * Read-only validation with discount preview. Safe to poll. Does NOT
    * redeem the code.
    */
-  validate(params: ValidatePromotionCodeParams): Promise<ValidatePromotionCodeResponse> {
+  validate(params: ValidatePromotionCodeParams, idempotencyKey?: string): Promise<ValidatePromotionCodeResponse> {
     return this.http.post<ValidatePromotionCodeResponse>(
       "/v1/billing/promotion-codes/validate",
       params,
+      idempotencyKey,
     );
   }
 }

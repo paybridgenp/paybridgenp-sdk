@@ -5,8 +5,8 @@ import type { PaginatedResponse } from "../types";
 export class RefundsResource {
   constructor(private readonly http: HttpClient) {}
 
-  create(params: CreateRefundParams): Promise<Refund> {
-    return this.http.post<Refund>("/v1/refunds", params);
+  create(params: CreateRefundParams, idempotencyKey?: string): Promise<Refund> {
+    return this.http.post<Refund>("/v1/refunds", params, idempotencyKey);
   }
 
   list(params: ListRefundsParams = {}): Promise<PaginatedResponse<Refund>> {

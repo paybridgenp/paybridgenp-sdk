@@ -13,8 +13,8 @@ export class DunningResource {
 
   // ── Policies ───────────────────────────────────────────────────────────────
 
-  createPolicy(params: CreateDunningPolicyParams): Promise<DunningPolicy> {
-    return this.http.post<DunningPolicy>("/v1/billing/dunning/policies", params);
+  createPolicy(params: CreateDunningPolicyParams, idempotencyKey?: string): Promise<DunningPolicy> {
+    return this.http.post<DunningPolicy>("/v1/billing/dunning/policies", params, idempotencyKey);
   }
 
   listPolicies(): Promise<{ data: DunningPolicy[] }> {
@@ -25,16 +25,17 @@ export class DunningResource {
     return this.http.get<DunningPolicy>(`/v1/billing/dunning/policies/${id}`);
   }
 
-  updatePolicy(id: string, params: UpdateDunningPolicyParams): Promise<DunningPolicy> {
-    return this.http.patch<DunningPolicy>(`/v1/billing/dunning/policies/${id}`, params);
+  updatePolicy(id: string, params: UpdateDunningPolicyParams, idempotencyKey?: string): Promise<DunningPolicy> {
+    return this.http.patch<DunningPolicy>(`/v1/billing/dunning/policies/${id}`, params, idempotencyKey);
   }
 
   // ── Subscription policy assignment ────────────────────────────────────────
 
-  setSubscriptionPolicy(subscriptionId: string, policyId: string | null): Promise<{ ok: boolean }> {
+  setSubscriptionPolicy(subscriptionId: string, policyId: string | null, idempotencyKey?: string): Promise<{ ok: boolean }> {
     return this.http.post<{ ok: boolean }>(
       `/v1/billing/dunning/subscriptions/${subscriptionId}/policy`,
       { policyId },
+      idempotencyKey,
     );
   }
 
@@ -46,17 +47,19 @@ export class DunningResource {
     );
   }
 
-  stopInvoice(invoiceId: string): Promise<{ ok: boolean }> {
+  stopInvoice(invoiceId: string, idempotencyKey?: string): Promise<{ ok: boolean }> {
     return this.http.post<{ ok: boolean }>(
       `/v1/billing/dunning/invoices/${invoiceId}/dunning/stop`,
       {},
+      idempotencyKey,
     );
   }
 
-  retryInvoiceNow(invoiceId: string): Promise<{ ok: boolean }> {
+  retryInvoiceNow(invoiceId: string, idempotencyKey?: string): Promise<{ ok: boolean }> {
     return this.http.post<{ ok: boolean }>(
       `/v1/billing/dunning/invoices/${invoiceId}/dunning/retry-now`,
       {},
+      idempotencyKey,
     );
   }
 }

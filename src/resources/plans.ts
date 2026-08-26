@@ -10,8 +10,8 @@ import type {
 export class PlansResource {
   constructor(private readonly http: HttpClient) {}
 
-  create(params: CreatePlanParams): Promise<Plan> {
-    return this.http.post<Plan>("/v1/billing/plans", params);
+  create(params: CreatePlanParams, idempotencyKey?: string): Promise<Plan> {
+    return this.http.post<Plan>("/v1/billing/plans", params, idempotencyKey);
   }
 
   list(params: ListPlansParams = {}): Promise<PaginatedBillingResponse<Plan>> {
@@ -27,7 +27,7 @@ export class PlansResource {
     return this.http.get<Plan>(`/v1/billing/plans/${id}`);
   }
 
-  update(id: string, params: UpdatePlanParams): Promise<Plan> {
-    return this.http.patch<Plan>(`/v1/billing/plans/${id}`, params);
+  update(id: string, params: UpdatePlanParams, idempotencyKey?: string): Promise<Plan> {
+    return this.http.patch<Plan>(`/v1/billing/plans/${id}`, params, idempotencyKey);
   }
 }

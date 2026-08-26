@@ -36,7 +36,7 @@ export class InvoicesResource {
    *
    * Premium feature; requires the `billing:write` scope and Fonepay configured.
    */
-  qr(id: string): Promise<FonepayQrSession> {
-    return this.http.post<FonepayQrSession>(`/v1/billing/invoices/${encodeURIComponent(id)}/qr`, {});
+  qr(id: string, idempotencyKey?: string): Promise<FonepayQrSession> {
+    return this.http.post<FonepayQrSession>(`/v1/billing/invoices/${encodeURIComponent(id)}/qr`, {}, idempotencyKey);
   }
 }

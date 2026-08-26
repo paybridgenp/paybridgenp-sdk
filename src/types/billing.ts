@@ -2,9 +2,9 @@ import type { Metadata, Provider } from "./index";
 
 // Response objects are the Stripe-style serialized shapes the API returns:
 // bare `id`, an `object` discriminator, snake_case fields, `metadata` exposed,
-// and NO internal fields (merchantId/projectId/mode/internal timestamps). See
-// decisions/0001-billing-response-serialization (monorepo). Request `*Params`
-// types stay camelCase — the API accepts camelCase request bodies.
+// and NO internal fields (merchantId/projectId/mode/internal timestamps).
+// Request `*Params` types stay camelCase; the API accepts camelCase request
+// bodies.
 
 // ── Plans ────────────────────────────────────────────────────────────────────
 

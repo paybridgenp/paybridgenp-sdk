@@ -17,8 +17,8 @@ export class PaymentLinksResource {
   constructor(private readonly http: HttpClient) {}
 
   /** Create a payment link. Returns the created link (HTTP 201). */
-  create(params: CreatePaymentLinkParams): Promise<PaymentLink> {
-    return this.http.post<PaymentLink>("/v1/payment-links", params);
+  create(params: CreatePaymentLinkParams, idempotencyKey?: string): Promise<PaymentLink> {
+    return this.http.post<PaymentLink>("/v1/payment-links", params, idempotencyKey);
   }
 
   /** List payment links for the project, newest first. Filter with `active`. */
@@ -39,8 +39,8 @@ export class PaymentLinksResource {
   }
 
   /** Update a link's editable fields. Only the keys you pass are changed. */
-  update(id: string, params: UpdatePaymentLinkParams): Promise<PaymentLink> {
-    return this.http.patch<PaymentLink>(`/v1/payment-links/${encodeURIComponent(id)}`, params);
+  update(id: string, params: UpdatePaymentLinkParams, idempotencyKey?: string): Promise<PaymentLink> {
+    return this.http.patch<PaymentLink>(`/v1/payment-links/${encodeURIComponent(id)}`, params, idempotencyKey);
   }
 
   /**
@@ -48,15 +48,15 @@ export class PaymentLinksResource {
    * keeping it and its history for your records. The recommended way to retire
    * a link that has already been used.
    */
-  cancel(id: string): Promise<PaymentLink> {
-    return this.http.post<PaymentLink>(`/v1/payment-links/${encodeURIComponent(id)}/cancel`, {});
+  cancel(id: string, idempotencyKey?: string): Promise<PaymentLink> {
+    return this.http.post<PaymentLink>(`/v1/payment-links/${encodeURIComponent(id)}/cancel`, {}, idempotencyKey);
   }
 
   /**
    * Permanently delete a link. Only allowed when the link has never been used —
    * otherwise the API returns 422 and you should {@link cancel} it instead.
    */
-  delete(id: string): Promise<DeletedPaymentLink> {
-    return this.http.delete<DeletedPaymentLink>(`/v1/payment-links/${encodeURIComponent(id)}`);
+  delete(id: string, idempotencyKey?: string): Promise<DeletedPaymentLink> {
+    return this.http.delete<DeletedPaymentLink>(`/v1/payment-links/${encodeURIComponent(id)}`, idempotencyKey);
   }
 }

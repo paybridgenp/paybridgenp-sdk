@@ -25,8 +25,8 @@ import type {
 export class SubscriptionsResource {
   constructor(private readonly http: HttpClient) {}
 
-  create(params: CreateSubscriptionParams): Promise<Subscription> {
-    return this.http.post<Subscription>("/v1/billing/subscriptions", params);
+  create(params: CreateSubscriptionParams, idempotencyKey?: string): Promise<Subscription> {
+    return this.http.post<Subscription>("/v1/billing/subscriptions", params, idempotencyKey);
   }
 
   list(params: ListSubscriptionsParams = {}): Promise<PaginatedBillingResponse<Subscription>> {
@@ -46,20 +46,20 @@ export class SubscriptionsResource {
     return this.http.get<Subscription>(`/v1/billing/subscriptions/${id}`);
   }
 
-  pause(id: string, params: PauseSubscriptionParams = {}): Promise<Subscription> {
-    return this.http.post<Subscription>(`/v1/billing/subscriptions/${id}/pause`, params);
+  pause(id: string, params: PauseSubscriptionParams = {}, idempotencyKey?: string): Promise<Subscription> {
+    return this.http.post<Subscription>(`/v1/billing/subscriptions/${id}/pause`, params, idempotencyKey);
   }
 
-  resume(id: string): Promise<Subscription> {
-    return this.http.post<Subscription>(`/v1/billing/subscriptions/${id}/resume`, {});
+  resume(id: string, idempotencyKey?: string): Promise<Subscription> {
+    return this.http.post<Subscription>(`/v1/billing/subscriptions/${id}/resume`, {}, idempotencyKey);
   }
 
-  cancel(id: string, params: CancelSubscriptionParams = {}): Promise<Subscription> {
-    return this.http.post<Subscription>(`/v1/billing/subscriptions/${id}/cancel`, params);
+  cancel(id: string, params: CancelSubscriptionParams = {}, idempotencyKey?: string): Promise<Subscription> {
+    return this.http.post<Subscription>(`/v1/billing/subscriptions/${id}/cancel`, params, idempotencyKey);
   }
 
-  changePlan(id: string, params: ChangePlanParams): Promise<ChangePlanResult> {
-    return this.http.post<ChangePlanResult>(`/v1/billing/subscriptions/${id}/change-plan`, params);
+  changePlan(id: string, params: ChangePlanParams, idempotencyKey?: string): Promise<ChangePlanResult> {
+    return this.http.post<ChangePlanResult>(`/v1/billing/subscriptions/${id}/change-plan`, params, idempotencyKey);
   }
 
   /**
@@ -78,8 +78,8 @@ export class SubscriptionsResource {
    * and emails it to the customer. Fires `subscription.trial_ended` webhook.
    * Idempotent — subsequent calls return 409 `trial_not_active`.
    */
-  endTrial(id: string): Promise<EndTrialResponse> {
-    return this.http.post<EndTrialResponse>(`/v1/billing/subscriptions/${id}/end-trial`, {});
+  endTrial(id: string, idempotencyKey?: string): Promise<EndTrialResponse> {
+    return this.http.post<EndTrialResponse>(`/v1/billing/subscriptions/${id}/end-trial`, {}, idempotencyKey);
   }
 
   /**
@@ -87,8 +87,8 @@ export class SubscriptionsResource {
    * is still active. Re-arms the 3-day-before reminder. Fires
    * `subscription.trial_extended` webhook.
    */
-  extendTrial(id: string, params: ExtendTrialParams): Promise<Subscription> {
-    return this.http.post<Subscription>(`/v1/billing/subscriptions/${id}/extend-trial`, params);
+  extendTrial(id: string, params: ExtendTrialParams, idempotencyKey?: string): Promise<Subscription> {
+    return this.http.post<Subscription>(`/v1/billing/subscriptions/${id}/extend-trial`, params, idempotencyKey);
   }
 
   /**
@@ -96,13 +96,13 @@ export class SubscriptionsResource {
    * effect on the next invoice. Deactivates any prior active discount on
    * this sub (partial unique index enforces one active discount per sub).
    */
-  applyCoupon(id: string, params: ApplyCouponParams): Promise<Discount> {
-    return this.http.post<Discount>(`/v1/billing/subscriptions/${id}/apply-coupon`, params);
+  applyCoupon(id: string, params: ApplyCouponParams, idempotencyKey?: string): Promise<Discount> {
+    return this.http.post<Discount>(`/v1/billing/subscriptions/${id}/apply-coupon`, params, idempotencyKey);
   }
 
   /** Remove the currently active discount. Future invoices are un-discounted. */
-  removeDiscount(id: string): Promise<Discount> {
-    return this.http.delete<Discount>(`/v1/billing/subscriptions/${id}/discount`);
+  removeDiscount(id: string, idempotencyKey?: string): Promise<Discount> {
+    return this.http.delete<Discount>(`/v1/billing/subscriptions/${id}/discount`, idempotencyKey);
   }
 
   // ── Usage (metered billing) ─────────────────────────────────────────────────
@@ -112,13 +112,13 @@ export class SubscriptionsResource {
    * (default) to add to the running total, or `action: "set"` for gauge-style
    * metrics. Pass `idempotencyKey` to prevent double-counting.
    */
-  reportUsage(id: string, params: ReportUsageParams): Promise<UsageReportAck> {
+  reportUsage(id: string, params: ReportUsageParams, idempotencyKey?: string): Promise<UsageReportAck> {
     return this.http.post<UsageReportAck>(`/v1/billing/subscriptions/${id}/usage`, {
       quantity: params.quantity,
       action: params.action,
       recorded_at: params.recordedAt,
       idempotency_key: params.idempotencyKey,
-    });
+    }, idempotencyKey);
   }
 
   /** Get the aggregated usage summary for the current billing period. */
@@ -143,17 +143,17 @@ export class SubscriptionsResource {
    * Add a one-off charge to a subscription. It will be included (and consumed)
    * when the next invoice is generated.
    */
-  createInvoiceItem(id: string, params: CreateInvoiceItemParams): Promise<InvoiceItem> {
-    return this.http.post<InvoiceItem>(`/v1/billing/subscriptions/${id}/invoice-items`, params);
+  createInvoiceItem(id: string, params: CreateInvoiceItemParams, idempotencyKey?: string): Promise<InvoiceItem> {
+    return this.http.post<InvoiceItem>(`/v1/billing/subscriptions/${id}/invoice-items`, params, idempotencyKey);
   }
 
   /** Delete a pending invoice item before it is invoiced. */
-  deleteInvoiceItem(subscriptionId: string, itemId: string): Promise<{ deleted: boolean }> {
-    return this.http.delete<{ deleted: boolean }>(`/v1/billing/subscriptions/${subscriptionId}/invoice-items/${itemId}`);
+  deleteInvoiceItem(subscriptionId: string, itemId: string, idempotencyKey?: string): Promise<{ deleted: boolean }> {
+    return this.http.delete<{ deleted: boolean }>(`/v1/billing/subscriptions/${subscriptionId}/invoice-items/${itemId}`, idempotencyKey);
   }
 
   /** Update the per-seat quantity on an active per_unit subscription. */
-  updateQuantity(id: string, quantity: number): Promise<Subscription> {
-    return this.http.patch<Subscription>(`/v1/billing/subscriptions/${id}/quantity`, { quantity });
+  updateQuantity(id: string, quantity: number, idempotencyKey?: string): Promise<Subscription> {
+    return this.http.patch<Subscription>(`/v1/billing/subscriptions/${id}/quantity`, { quantity }, idempotencyKey);
   }
 }

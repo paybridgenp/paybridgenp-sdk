@@ -36,6 +36,7 @@ __export(index_exports, {
   ConnectionError: () => ConnectionError,
   IdempotencyError: () => IdempotencyError,
   InvalidRequestError: () => InvalidRequestError,
+  NotFoundError: () => NotFoundError,
   PayBridgeAuthenticationError: () => PayBridgeAuthenticationError,
   PayBridgeError: () => PayBridgeError,
   PayBridgeInvalidRequestError: () => PayBridgeInvalidRequestError,
@@ -115,6 +116,12 @@ var InvalidRequestError = class extends PayBridgeError {
     this.name = "InvalidRequestError";
   }
 };
+var NotFoundError = class extends InvalidRequestError {
+  constructor(message, opts = {}) {
+    super(message, 404, opts);
+    this.name = "NotFoundError";
+  }
+};
 var IdempotencyError = class extends PayBridgeError {
   constructor(message, opts = {}) {
     super(message, 409, "idempotency_error", opts);
@@ -172,7 +179,7 @@ function parseErrorResponse(statusCode, body, retryAfterHeader) {
     case "permission_error":
       return new PermissionError(message, statusCode, opts);
     case "invalid_request_error":
-      return new InvalidRequestError(message, statusCode, opts);
+      return statusCode === 404 ? new NotFoundError(message, opts) : new InvalidRequestError(message, statusCode, opts);
     case "idempotency_error":
       return new IdempotencyError(message, opts);
     case "rate_limit_error":
@@ -185,13 +192,13 @@ function parseErrorResponse(statusCode, body, retryAfterHeader) {
   }
   if (statusCode === 401) return new AuthenticationError(message, opts);
   if (statusCode === 403) return new PermissionError(message, statusCode, opts);
-  if (statusCode === 404) return new InvalidRequestError(message, statusCode, opts);
+  if (statusCode === 404) return new NotFoundError(message, opts);
   if (statusCode === 409) return new InvalidRequestError(message, statusCode, opts);
-  if (statusCode >= 400 && statusCode < 500) return new InvalidRequestError(message, statusCode, opts);
   if (statusCode === 429) return new RateLimitError(message, {
     ...opts,
     retryAfter: retryAfterHeader ? Number(retryAfterHeader) : void 0
   });
+  if (statusCode >= 400 && statusCode < 500) return new InvalidRequestError(message, statusCode, opts);
   return new ApiError(message, statusCode, opts);
 }
 
@@ -218,13 +225,17 @@ var HttpClient = class {
     this.timeout = config.timeout ?? DEFAULT_TIMEOUT;
     this.maxRetries = config.maxRetries ?? DEFAULT_MAX_RETRIES;
   }
-  async request(method, path, body) {
+  async request(method, path, body, idempotencyKey) {
     const url = `${this.baseUrl}${path}`;
+    const isSafe = method.toUpperCase() === "GET";
     const headers = {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
-      "User-Agent": "PayBridgeNP-SDK/5.5.1"
+      "User-Agent": "PayBridgeNP-SDK/5.7.0"
     };
+    if (!isSafe) {
+      headers["Idempotency-Key"] = idempotencyKey ?? crypto.randomUUID();
+    }
     let attempt = 0;
     while (true) {
       attempt++;
@@ -237,7 +248,7 @@ var HttpClient = class {
           signal: AbortSignal.timeout(this.timeout)
         });
       } catch (err) {
-        if (attempt > this.maxRetries) {
+        if (!isSafe || attempt > this.maxRetries) {
           throw new ConnectionError(`Connection error: ${err.message}`);
         }
         await sleep(backoff(attempt));
@@ -246,7 +257,7 @@ var HttpClient = class {
       if (res.ok) {
         return res.json();
       }
-      if (RETRY_STATUSES.has(res.status) && attempt <= this.maxRetries) {
+      if (isSafe && RETRY_STATUSES.has(res.status) && attempt <= this.maxRetries) {
         const retryAfter = res.headers.get("Retry-After");
         const delay = retryAfter ? parseInt(retryAfter) * 1e3 : backoff(attempt);
         await sleep(delay);
@@ -263,14 +274,14 @@ var HttpClient = class {
   get(path) {
     return this.request("GET", path);
   }
-  post(path, body) {
-    return this.request("POST", path, body);
+  post(path, body, idempotencyKey) {
+    return this.request("POST", path, body, idempotencyKey);
   }
-  patch(path, body) {
-    return this.request("PATCH", path, body);
+  patch(path, body, idempotencyKey) {
+    return this.request("PATCH", path, body, idempotencyKey);
   }
-  delete(path) {
-    return this.request("DELETE", path);
+  delete(path, idempotencyKey) {
+    return this.request("DELETE", path, void 0, idempotencyKey);
   }
 };
 
@@ -279,8 +290,8 @@ var CheckoutResource = class {
   constructor(http) {
     this.http = http;
   }
-  create(params) {
-    return this.http.post("/v1/checkout", params);
+  create(params, idempotencyKey) {
+    return this.http.post("/v1/checkout", params, idempotencyKey);
   }
   /**
    * Retrieve a checkout session by ID, including its current status, amount,
@@ -321,10 +332,11 @@ var CheckoutResource = class {
    * Idempotent: calling on an already-terminal session is a no-op that
    * returns the current row state without error.
    */
-  expire(id) {
+  expire(id, idempotencyKey) {
     return this.http.post(
       `/v1/checkout/${encodeURIComponent(id)}/expire`,
-      {}
+      {},
+      idempotencyKey
     );
   }
 };
@@ -335,8 +347,8 @@ var PaymentLinksResource = class {
     this.http = http;
   }
   /** Create a payment link. Returns the created link (HTTP 201). */
-  create(params) {
-    return this.http.post("/v1/payment-links", params);
+  create(params, idempotencyKey) {
+    return this.http.post("/v1/payment-links", params, idempotencyKey);
   }
   /** List payment links for the project, newest first. Filter with `active`. */
   list(params = {}) {
@@ -354,23 +366,23 @@ var PaymentLinksResource = class {
     return this.http.get(`/v1/payment-links/${encodeURIComponent(id)}`);
   }
   /** Update a link's editable fields. Only the keys you pass are changed. */
-  update(id, params) {
-    return this.http.patch(`/v1/payment-links/${encodeURIComponent(id)}`, params);
+  update(id, params, idempotencyKey) {
+    return this.http.patch(`/v1/payment-links/${encodeURIComponent(id)}`, params, idempotencyKey);
   }
   /**
    * Cancel (deactivate) a link so it can no longer accept payments, while
    * keeping it and its history for your records. The recommended way to retire
    * a link that has already been used.
    */
-  cancel(id) {
-    return this.http.post(`/v1/payment-links/${encodeURIComponent(id)}/cancel`, {});
+  cancel(id, idempotencyKey) {
+    return this.http.post(`/v1/payment-links/${encodeURIComponent(id)}/cancel`, {}, idempotencyKey);
   }
   /**
    * Permanently delete a link. Only allowed when the link has never been used —
    * otherwise the API returns 422 and you should {@link cancel} it instead.
    */
-  delete(id) {
-    return this.http.delete(`/v1/payment-links/${encodeURIComponent(id)}`);
+  delete(id, idempotencyKey) {
+    return this.http.delete(`/v1/payment-links/${encodeURIComponent(id)}`, idempotencyKey);
   }
 };
 
@@ -396,8 +408,8 @@ var RefundsResource = class {
   constructor(http) {
     this.http = http;
   }
-  create(params) {
-    return this.http.post("/v1/refunds", params);
+  create(params, idempotencyKey) {
+    return this.http.post("/v1/refunds", params, idempotencyKey);
   }
   list(params = {}) {
     const qs = new URLSearchParams();
@@ -417,21 +429,21 @@ var WebhooksResource = class {
   constructor(http) {
     this.http = http;
   }
-  create(params) {
+  create(params, idempotencyKey) {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
-    return this.http.post("/v1/webhooks", params);
+    return this.http.post("/v1/webhooks", params, idempotencyKey);
   }
   list() {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
     return this.http.get("/v1/webhooks");
   }
-  update(id, params) {
+  update(id, params, idempotencyKey) {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
-    return this.http.patch(`/v1/webhooks/${id}`, params);
+    return this.http.patch(`/v1/webhooks/${id}`, params, idempotencyKey);
   }
-  delete(id) {
+  delete(id, idempotencyKey) {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
-    return this.http.delete(`/v1/webhooks/${id}`);
+    return this.http.delete(`/v1/webhooks/${id}`, idempotencyKey);
   }
   listDeliveries(id) {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
@@ -475,8 +487,8 @@ var PlansResource = class {
   constructor(http) {
     this.http = http;
   }
-  create(params) {
-    return this.http.post("/v1/billing/plans", params);
+  create(params, idempotencyKey) {
+    return this.http.post("/v1/billing/plans", params, idempotencyKey);
   }
   list(params = {}) {
     const qs = new URLSearchParams();
@@ -489,8 +501,8 @@ var PlansResource = class {
   get(id) {
     return this.http.get(`/v1/billing/plans/${id}`);
   }
-  update(id, params) {
-    return this.http.patch(`/v1/billing/plans/${id}`, params);
+  update(id, params, idempotencyKey) {
+    return this.http.patch(`/v1/billing/plans/${id}`, params, idempotencyKey);
   }
 };
 
@@ -499,8 +511,8 @@ var CustomersResource = class {
   constructor(http) {
     this.http = http;
   }
-  create(params) {
-    return this.http.post("/v1/billing/customers", params);
+  create(params, idempotencyKey) {
+    return this.http.post("/v1/billing/customers", params, idempotencyKey);
   }
   list(params = {}) {
     const qs = new URLSearchParams();
@@ -515,19 +527,19 @@ var CustomersResource = class {
   get(id) {
     return this.http.get(`/v1/billing/customers/${id}`);
   }
-  update(id, params) {
-    return this.http.patch(`/v1/billing/customers/${id}`, params);
+  update(id, params, idempotencyKey) {
+    return this.http.patch(`/v1/billing/customers/${id}`, params, idempotencyKey);
   }
-  delete(id) {
-    return this.http.delete(`/v1/billing/customers/${id}`);
+  delete(id, idempotencyKey) {
+    return this.http.delete(`/v1/billing/customers/${id}`, idempotencyKey);
   }
   /**
    * Add (or deduct, with negative amount) credits to a customer's balance.
    * Credits are applied automatically against future invoices before payment.
    * @param amount Amount in paisa (NPR × 100).
    */
-  addCredit(id, params) {
-    return this.http.post(`/v1/billing/customers/${id}/credit`, params);
+  addCredit(id, params, idempotencyKey) {
+    return this.http.post(`/v1/billing/customers/${id}/credit`, params, idempotencyKey);
   }
 };
 
@@ -536,8 +548,8 @@ var SubscriptionsResource = class {
   constructor(http) {
     this.http = http;
   }
-  create(params) {
-    return this.http.post("/v1/billing/subscriptions", params);
+  create(params, idempotencyKey) {
+    return this.http.post("/v1/billing/subscriptions", params, idempotencyKey);
   }
   list(params = {}) {
     const qs = new URLSearchParams();
@@ -554,17 +566,17 @@ var SubscriptionsResource = class {
   get(id) {
     return this.http.get(`/v1/billing/subscriptions/${id}`);
   }
-  pause(id, params = {}) {
-    return this.http.post(`/v1/billing/subscriptions/${id}/pause`, params);
+  pause(id, params = {}, idempotencyKey) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/pause`, params, idempotencyKey);
   }
-  resume(id) {
-    return this.http.post(`/v1/billing/subscriptions/${id}/resume`, {});
+  resume(id, idempotencyKey) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/resume`, {}, idempotencyKey);
   }
-  cancel(id, params = {}) {
-    return this.http.post(`/v1/billing/subscriptions/${id}/cancel`, params);
+  cancel(id, params = {}, idempotencyKey) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/cancel`, params, idempotencyKey);
   }
-  changePlan(id, params) {
-    return this.http.post(`/v1/billing/subscriptions/${id}/change-plan`, params);
+  changePlan(id, params, idempotencyKey) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/change-plan`, params, idempotencyKey);
   }
   /**
    * Preview the proration credit/debit amounts for a mid-period plan change
@@ -581,28 +593,28 @@ var SubscriptionsResource = class {
    * and emails it to the customer. Fires `subscription.trial_ended` webhook.
    * Idempotent — subsequent calls return 409 `trial_not_active`.
    */
-  endTrial(id) {
-    return this.http.post(`/v1/billing/subscriptions/${id}/end-trial`, {});
+  endTrial(id, idempotencyKey) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/end-trial`, {}, idempotencyKey);
   }
   /**
    * Push the trial end date further into the future. Only valid while trial
    * is still active. Re-arms the 3-day-before reminder. Fires
    * `subscription.trial_extended` webhook.
    */
-  extendTrial(id, params) {
-    return this.http.post(`/v1/billing/subscriptions/${id}/extend-trial`, params);
+  extendTrial(id, params, idempotencyKey) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/extend-trial`, params, idempotencyKey);
   }
   /**
    * Attach a coupon or promotion code to an existing subscription. Takes
    * effect on the next invoice. Deactivates any prior active discount on
    * this sub (partial unique index enforces one active discount per sub).
    */
-  applyCoupon(id, params) {
-    return this.http.post(`/v1/billing/subscriptions/${id}/apply-coupon`, params);
+  applyCoupon(id, params, idempotencyKey) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/apply-coupon`, params, idempotencyKey);
   }
   /** Remove the currently active discount. Future invoices are un-discounted. */
-  removeDiscount(id) {
-    return this.http.delete(`/v1/billing/subscriptions/${id}/discount`);
+  removeDiscount(id, idempotencyKey) {
+    return this.http.delete(`/v1/billing/subscriptions/${id}/discount`, idempotencyKey);
   }
   // ── Usage (metered billing) ─────────────────────────────────────────────────
   /**
@@ -610,13 +622,13 @@ var SubscriptionsResource = class {
    * (default) to add to the running total, or `action: "set"` for gauge-style
    * metrics. Pass `idempotencyKey` to prevent double-counting.
    */
-  reportUsage(id, params) {
+  reportUsage(id, params, idempotencyKey) {
     return this.http.post(`/v1/billing/subscriptions/${id}/usage`, {
       quantity: params.quantity,
       action: params.action,
       recorded_at: params.recordedAt,
       idempotency_key: params.idempotencyKey
-    });
+    }, idempotencyKey);
   }
   /** Get the aggregated usage summary for the current billing period. */
   getUsageSummary(id) {
@@ -636,16 +648,16 @@ var SubscriptionsResource = class {
    * Add a one-off charge to a subscription. It will be included (and consumed)
    * when the next invoice is generated.
    */
-  createInvoiceItem(id, params) {
-    return this.http.post(`/v1/billing/subscriptions/${id}/invoice-items`, params);
+  createInvoiceItem(id, params, idempotencyKey) {
+    return this.http.post(`/v1/billing/subscriptions/${id}/invoice-items`, params, idempotencyKey);
   }
   /** Delete a pending invoice item before it is invoiced. */
-  deleteInvoiceItem(subscriptionId, itemId) {
-    return this.http.delete(`/v1/billing/subscriptions/${subscriptionId}/invoice-items/${itemId}`);
+  deleteInvoiceItem(subscriptionId, itemId, idempotencyKey) {
+    return this.http.delete(`/v1/billing/subscriptions/${subscriptionId}/invoice-items/${itemId}`, idempotencyKey);
   }
   /** Update the per-seat quantity on an active per_unit subscription. */
-  updateQuantity(id, quantity) {
-    return this.http.patch(`/v1/billing/subscriptions/${id}/quantity`, { quantity });
+  updateQuantity(id, quantity, idempotencyKey) {
+    return this.http.patch(`/v1/billing/subscriptions/${id}/quantity`, { quantity }, idempotencyKey);
   }
 };
 
@@ -679,8 +691,8 @@ var InvoicesResource = class {
    *
    * Premium feature; requires the `billing:write` scope and Fonepay configured.
    */
-  qr(id) {
-    return this.http.post(`/v1/billing/invoices/${encodeURIComponent(id)}/qr`, {});
+  qr(id, idempotencyKey) {
+    return this.http.post(`/v1/billing/invoices/${encodeURIComponent(id)}/qr`, {}, idempotencyKey);
   }
 };
 
@@ -693,8 +705,8 @@ var CouponsResource = class {
    * Create a reusable coupon. Discount params are immutable post-creation —
    * replace by deactivating and creating a new one.
    */
-  create(params) {
-    return this.http.post("/v1/billing/coupons", params);
+  create(params, idempotencyKey) {
+    return this.http.post("/v1/billing/coupons", params, idempotencyKey);
   }
   list(params = {}) {
     const qs = new URLSearchParams();
@@ -709,8 +721,8 @@ var CouponsResource = class {
     return this.http.get(`/v1/billing/coupons/${id}`);
   }
   /** Deactivate. Soft-delete — historical redemptions remain intact. */
-  deactivate(id) {
-    return this.http.delete(`/v1/billing/coupons/${id}`);
+  deactivate(id, idempotencyKey) {
+    return this.http.delete(`/v1/billing/coupons/${id}`, idempotencyKey);
   }
 };
 
@@ -723,8 +735,8 @@ var PromotionCodesResource = class {
    * Create a customer-facing promotion code that redeems a coupon. Code is
    * auto-uppercased server-side and unique per merchant.
    */
-  create(params) {
-    return this.http.post("/v1/billing/promotion-codes", params);
+  create(params, idempotencyKey) {
+    return this.http.post("/v1/billing/promotion-codes", params, idempotencyKey);
   }
   list(params = {}) {
     const qs = new URLSearchParams();
@@ -740,17 +752,18 @@ var PromotionCodesResource = class {
     return this.http.get(`/v1/billing/promotion-codes/${id}`);
   }
   /** Deactivate. Existing redemptions remain valid. */
-  deactivate(id) {
-    return this.http.patch(`/v1/billing/promotion-codes/${id}`, { active: false });
+  deactivate(id, idempotencyKey) {
+    return this.http.patch(`/v1/billing/promotion-codes/${id}`, { active: false }, idempotencyKey);
   }
   /**
    * Read-only validation with discount preview. Safe to poll. Does NOT
    * redeem the code.
    */
-  validate(params) {
+  validate(params, idempotencyKey) {
     return this.http.post(
       "/v1/billing/promotion-codes/validate",
-      params
+      params,
+      idempotencyKey
     );
   }
 };
@@ -761,8 +774,8 @@ var DunningResource = class {
     this.http = http;
   }
   // ── Policies ───────────────────────────────────────────────────────────────
-  createPolicy(params) {
-    return this.http.post("/v1/billing/dunning/policies", params);
+  createPolicy(params, idempotencyKey) {
+    return this.http.post("/v1/billing/dunning/policies", params, idempotencyKey);
   }
   listPolicies() {
     return this.http.get("/v1/billing/dunning/policies");
@@ -770,14 +783,15 @@ var DunningResource = class {
   getPolicy(id) {
     return this.http.get(`/v1/billing/dunning/policies/${id}`);
   }
-  updatePolicy(id, params) {
-    return this.http.patch(`/v1/billing/dunning/policies/${id}`, params);
+  updatePolicy(id, params, idempotencyKey) {
+    return this.http.patch(`/v1/billing/dunning/policies/${id}`, params, idempotencyKey);
   }
   // ── Subscription policy assignment ────────────────────────────────────────
-  setSubscriptionPolicy(subscriptionId, policyId) {
+  setSubscriptionPolicy(subscriptionId, policyId, idempotencyKey) {
     return this.http.post(
       `/v1/billing/dunning/subscriptions/${subscriptionId}/policy`,
-      { policyId }
+      { policyId },
+      idempotencyKey
     );
   }
   // ── Invoice dunning actions ────────────────────────────────────────────────
@@ -786,16 +800,18 @@ var DunningResource = class {
       `/v1/billing/dunning/invoices/${invoiceId}/dunning`
     );
   }
-  stopInvoice(invoiceId) {
+  stopInvoice(invoiceId, idempotencyKey) {
     return this.http.post(
       `/v1/billing/dunning/invoices/${invoiceId}/dunning/stop`,
-      {}
+      {},
+      idempotencyKey
     );
   }
-  retryInvoiceNow(invoiceId) {
+  retryInvoiceNow(invoiceId, idempotencyKey) {
     return this.http.post(
       `/v1/billing/dunning/invoices/${invoiceId}/dunning/retry-now`,
-      {}
+      {},
+      idempotencyKey
     );
   }
 };
@@ -810,8 +826,8 @@ var TaxResource = class {
     return this.http.get("/v1/billing/settings/tax");
   }
   /** Update tax settings (enabled, rate, registration number, label). */
-  updateSettings(params) {
-    return this.http.patch("/v1/billing/settings/tax", params);
+  updateSettings(params, idempotencyKey) {
+    return this.http.patch("/v1/billing/settings/tax", params, idempotencyKey);
   }
 };
 
@@ -826,8 +842,8 @@ var QrResource = class {
    *
    * Premium feature — requires the merchant to be on the Premium plan.
    */
-  fonepay(params) {
-    return this.http.post("/v1/qr/fonepay", params);
+  fonepay(params, idempotencyKey) {
+    return this.http.post("/v1/qr/fonepay", params, idempotencyKey);
   }
   /**
    * Refresh a Direct-QR session: regenerate a fresh Fonepay QR for the SAME
@@ -839,8 +855,53 @@ var QrResource = class {
    *
    * Premium feature — requires the merchant to be on the Premium plan.
    */
-  refresh(id) {
-    return this.http.post(`/v1/qr/${encodeURIComponent(id)}/refresh`, {});
+  refresh(id, idempotencyKey) {
+    return this.http.post(`/v1/qr/${encodeURIComponent(id)}/refresh`, {}, idempotencyKey);
+  }
+};
+
+// src/resources/account.ts
+var AccountResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  get() {
+    return this.http.get("/v1/account");
+  }
+};
+
+// src/resources/analytics.ts
+var AnalyticsResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  overview(days) {
+    const query = days === void 0 ? "" : `?days=${encodeURIComponent(String(days))}`;
+    return this.http.get(`/v1/analytics/overview${query}`);
+  }
+};
+
+// src/resources/providers.ts
+var ProvidersResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  list() {
+    return this.http.get("/v1/providers");
+  }
+};
+
+// src/resources/sms.ts
+var SmsResource = class {
+  constructor(http) {
+    this.http = http;
+  }
+  /**
+   * Send a pending-payment reminder. The optional key is sent for SDK API
+   * consistency, but the server does not currently deduplicate this route.
+   */
+  notifyPendingPayment(params, idempotencyKey) {
+    return this.http.post("/v1/sms/notify-pending-payment", params, idempotencyKey);
   }
 };
 
@@ -863,6 +924,10 @@ var PayBridgeNP = class {
   _dunning;
   _tax;
   _qr;
+  _account;
+  _analytics;
+  _providers;
+  _sms;
   constructor(config) {
     this.http = new HttpClient(config);
   }
@@ -914,10 +979,26 @@ var PayBridgeNP = class {
   get qr() {
     return this._qr ??= new QrResource(this.http);
   }
+  /** Account context implied by the calling API key. */
+  get account() {
+    return this._account ??= new AccountResource(this.http);
+  }
+  /** Aggregated payment and checkout KPIs. */
+  get analytics() {
+    return this._analytics ??= new AnalyticsResource(this.http);
+  }
+  /** Providers enabled and configured for this project. */
+  get providers() {
+    return this._providers ??= new ProvidersResource(this.http);
+  }
+  /** Transactional SMS operations. */
+  get sms() {
+    return this._sms ??= new SmsResource(this.http);
+  }
 };
 
 // src/index.ts
-var SDK_VERSION = "5.5.1";
+var SDK_VERSION = "5.7.0";
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AccountError,
@@ -926,6 +1007,7 @@ var SDK_VERSION = "5.5.1";
   ConnectionError,
   IdempotencyError,
   InvalidRequestError,
+  NotFoundError,
   PayBridgeAuthenticationError,
   PayBridgeError,
   PayBridgeInvalidRequestError,

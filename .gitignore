@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+*.tsbuildinfo
+
+# NOTE: dist/ is deliberately TRACKED — this is the public
+# paybridgenp/paybridgenp-sdk mirror and the built output ships with it.
+
+# Local scratch harnesses — never ship in the public mirror.
+test-*.ts

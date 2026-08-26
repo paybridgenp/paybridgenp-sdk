@@ -11,6 +11,43 @@ export type PayBridgeConfig = {
 
 export type Metadata = Record<string, unknown>;
 
+// ── Account, analytics, providers, and SMS ──────────────────────────────────
+
+export type Account = {
+  merchant: { id: string; name: string; email: string | null; created_at: string };
+  project: { id: string; name: string; mode: "sandbox" | "live"; created_at: string };
+  api_key: {
+    id: string; prefix: string; hint: string; kind: string; scopes: string[] | null;
+    description: string | null; expires_at: string | null; last_used_at: string | null;
+    spend_cap_paisa: number | null;
+  };
+  plan: string;
+  entitlements: Record<string, unknown>;
+};
+
+export type AnalyticsOverview = {
+  window: { days: number; start: string; end: string };
+  payments: { total: number; success: number; failed: number; success_rate: number; success_volume_paisa: number };
+  funnel: {
+    sessions_created: number; sessions_initiated: number; sessions_paid: number;
+    conversion_rate_initiated_to_paid: number;
+  };
+  by_provider: Array<{ provider: Provider | null; count: number; success_count: number; success_volume_paisa: number }>;
+};
+
+export type ProviderList = { providers: Provider[] };
+
+export type NotifyPendingPaymentParams = {
+  customerPhone: string;
+  shopName: string;
+  orderName: string;
+  amountMinor: number;
+  currency: string;
+  checkoutUrl: string;
+};
+
+export type SmsNotifyResult = { sent: boolean; status: string };
+
 // ── Checkout ──────────────────────────────────────────────────────────────────
 
 export type CheckoutFlow = "hosted" | "redirect";
@@ -223,7 +260,21 @@ export type WebhookDelivery = {
 // casing difference is a known legacy quirk, not an SDK choice. `provider` here
 // spans all five providers (sessions can target connectips/hamropay too).
 
+/**
+ * Every provider value that can appear on a session we RETURN, including
+ * providers that are no longer selectable. Historical rows keep them, so a
+ * response type must stay wide.
+ */
 export type SessionProvider = "esewa" | "khalti" | "connectips" | "hamropay" | "fonepay";
+
+/**
+ * Providers you can actually ASK for. Narrower than SessionProvider on purpose:
+ * connectips and hamropay have no adapter, and the API rejects them with 400.
+ * Advertising them in a request type meant a program could compile and then
+ * fail at runtime (external review, 2026-07-28). Mirrors LIVE_PROVIDER_NAMES
+ * server-side.
+ */
+export type LiveProvider = "esewa" | "khalti" | "fonepay";
 
 /** Billing address as returned on a retrieved session (all but line1/city nullable). */
 export type SessionAddress = {
@@ -323,7 +374,7 @@ export type CreatePaymentLinkParams = {
   minAmount?: number | null;
   maxAmount?: number | null;
   currency?: "NPR";
-  provider?: SessionProvider | null;
+  provider?: LiveProvider | null;
   maxUses?: number | null;
   expiresAt?: string | null;
   redirectUrl?: string | null;

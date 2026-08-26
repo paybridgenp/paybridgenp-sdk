@@ -11,9 +11,9 @@ import { PayBridgeSignatureVerificationError } from "../errors";
 export class WebhooksResource {
   constructor(private readonly http?: HttpClient) {}
 
-  create(params: CreateWebhookParams): Promise<WebhookEndpoint & { signing_secret: string }> {
+  create(params: CreateWebhookParams, idempotencyKey?: string): Promise<WebhookEndpoint & { signing_secret: string }> {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
-    return this.http.post<WebhookEndpoint & { signing_secret: string }>("/v1/webhooks", params);
+    return this.http.post<WebhookEndpoint & { signing_secret: string }>("/v1/webhooks", params, idempotencyKey);
   }
 
   list(): Promise<{ data: WebhookEndpoint[] }> {
@@ -21,14 +21,14 @@ export class WebhooksResource {
     return this.http.get<{ data: WebhookEndpoint[] }>("/v1/webhooks");
   }
 
-  update(id: string, params: UpdateWebhookParams): Promise<WebhookEndpoint> {
+  update(id: string, params: UpdateWebhookParams, idempotencyKey?: string): Promise<WebhookEndpoint> {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
-    return this.http.patch<WebhookEndpoint>(`/v1/webhooks/${id}`, params);
+    return this.http.patch<WebhookEndpoint>(`/v1/webhooks/${id}`, params, idempotencyKey);
   }
 
-  delete(id: string): Promise<{ deleted: boolean; id: string }> {
+  delete(id: string, idempotencyKey?: string): Promise<{ deleted: boolean; id: string }> {
     if (!this.http) throw new Error("WebhooksResource requires an HttpClient");
-    return this.http.delete<{ deleted: boolean; id: string }>(`/v1/webhooks/${id}`);
+    return this.http.delete<{ deleted: boolean; id: string }>(`/v1/webhooks/${id}`, idempotencyKey);
   }
 
   listDeliveries(id: string): Promise<{ data: WebhookDelivery[] }> {

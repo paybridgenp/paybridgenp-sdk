@@ -119,6 +119,25 @@ export class InvalidRequestError extends PayBridgeError {
   }
 }
 
+/**
+ * HTTP 404. A SUBCLASS of `InvalidRequestError`, so `instanceof
+ * InvalidRequestError` still matches a 404 exactly as before, while
+ * `instanceof NotFoundError` narrows to 404 only. The Stripe-style `type`
+ * stays `invalid_request_error`.
+ *
+ * Added 2026-08-16 for parity with the PHP and Python SDKs, which both had a
+ * NotFound class whose docs promised a working narrow catch while nothing ever
+ * constructed it. `PayBridgeNotFoundError` below is the OLD alias and is left
+ * pointing at `InvalidRequestError` on purpose — repointing it here would
+ * narrow existing callers' catches, which would be a breaking change.
+ */
+export class NotFoundError extends InvalidRequestError {
+  constructor(message: string, opts: ConstructorParameters<typeof PayBridgeError>[3] = {}) {
+    super(message, 404, opts);
+    this.name = "NotFoundError";
+  }
+}
+
 export class IdempotencyError extends PayBridgeError {
   constructor(message: string, opts: ConstructorParameters<typeof PayBridgeError>[3] = {}) {
     super(message, 409, "idempotency_error", opts);
@@ -214,7 +233,9 @@ export function parseErrorResponse(
     case "permission_error":
       return new PermissionError(message, statusCode, opts);
     case "invalid_request_error":
-      return new InvalidRequestError(message, statusCode, opts);
+      return statusCode === 404
+        ? new NotFoundError(message, opts)
+        : new InvalidRequestError(message, statusCode, opts);
     case "idempotency_error":
       return new IdempotencyError(message, opts);
     case "rate_limit_error":
@@ -229,13 +250,16 @@ export function parseErrorResponse(
   // No type field — derive from status (legacy flat shape).
   if (statusCode === 401) return new AuthenticationError(message, opts);
   if (statusCode === 403) return new PermissionError(message, statusCode, opts);
-  if (statusCode === 404) return new InvalidRequestError(message, statusCode, opts);
+  if (statusCode === 404) return new NotFoundError(message, opts);
   if (statusCode === 409) return new InvalidRequestError(message, statusCode, opts);
-  if (statusCode >= 400 && statusCode < 500) return new InvalidRequestError(message, statusCode, opts);
+  // 429 MUST be tested before the generic 4xx branch below, which would
+  // otherwise swallow it and hand callers an InvalidRequestError they cannot
+  // back off on.
   if (statusCode === 429) return new RateLimitError(message, {
     ...opts,
     retryAfter: retryAfterHeader ? Number(retryAfterHeader) : undefined,
   });
+  if (statusCode >= 400 && statusCode < 500) return new InvalidRequestError(message, statusCode, opts);
   return new ApiError(message, statusCode, opts);
 }
 

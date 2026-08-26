@@ -13,8 +13,8 @@ export class CouponsResource {
    * Create a reusable coupon. Discount params are immutable post-creation —
    * replace by deactivating and creating a new one.
    */
-  create(params: CreateCouponParams): Promise<Coupon> {
-    return this.http.post<Coupon>("/v1/billing/coupons", params);
+  create(params: CreateCouponParams, idempotencyKey?: string): Promise<Coupon> {
+    return this.http.post<Coupon>("/v1/billing/coupons", params, idempotencyKey);
   }
 
   list(params: ListCouponsParams = {}): Promise<BillingListResponse<Coupon>> {
@@ -32,7 +32,7 @@ export class CouponsResource {
   }
 
   /** Deactivate. Soft-delete — historical redemptions remain intact. */
-  deactivate(id: string): Promise<Coupon> {
-    return this.http.delete<Coupon>(`/v1/billing/coupons/${id}`);
+  deactivate(id: string, idempotencyKey?: string): Promise<Coupon> {
+    return this.http.delete<Coupon>(`/v1/billing/coupons/${id}`, idempotencyKey);
   }
 }

@@ -11,7 +11,7 @@ export class TaxResource {
   }
 
   /** Update tax settings (enabled, rate, registration number, label). */
-  updateSettings(params: UpdateTaxSettingsParams): Promise<TaxSettings> {
-    return this.http.patch<TaxSettings>("/v1/billing/settings/tax", params);
+  updateSettings(params: UpdateTaxSettingsParams, idempotencyKey?: string): Promise<TaxSettings> {
+    return this.http.patch<TaxSettings>("/v1/billing/settings/tax", params, idempotencyKey);
   }
 }

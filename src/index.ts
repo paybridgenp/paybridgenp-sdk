@@ -14,6 +14,7 @@ export {
   // Pre-3.0 names kept as deprecated aliases.
   PayBridgeAuthenticationError,
   PayBridgeNotFoundError,
+  NotFoundError,
   PayBridgeInvalidRequestError,
   PayBridgeRateLimitError,
   PayBridgeSignatureVerificationError,
@@ -50,6 +51,11 @@ export type {
   WebhookEvent,
   CreateWebhookParams,
   WebhookEndpoint,
+  Account,
+  AnalyticsOverview,
+  ProviderList,
+  NotifyPendingPaymentParams,
+  SmsNotifyResult,
 } from "./types";
 
 export type {
@@ -137,4 +143,4 @@ export type {
   BillingListResponse,
 } from "./types/billing";
 
-export const SDK_VERSION = "5.5.1" as const;
+export const SDK_VERSION = "5.7.0" as const;

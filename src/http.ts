@@ -28,13 +28,30 @@ export class HttpClient {
     this.maxRetries = config.maxRetries ?? DEFAULT_MAX_RETRIES;
   }
 
-  async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async request<T>(method: string, path: string, body?: unknown, idempotencyKey?: string): Promise<T> {
     const url = `${this.baseUrl}${path}`;
+    // Retrying a POST/PATCH/DELETE that may already have been applied is how a
+    // network blip becomes two checkout sessions, two subscriptions, two
+    // invoices. Every method used to be retried on a connection error and on
+    // 500/502/503/504, with no idempotency key on any attempt (external
+    // review, 2026-07-28).
+    //
+    // GET is safe by definition, so only GET auto-retries now.
+    //
+    // We also send an Idempotency-Key on unsafe requests. Replay protection is
+    // applied per route by the API, so the key is protection wherever the
+    // server offers it and it makes a caller's own retry safe there; it is
+    // NOT a licence for this client to retry writes
+    // automatically. Re-enable that only when every mutating route is wrapped.
+    const isSafe = method.toUpperCase() === "GET";
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
-      "User-Agent": "PayBridgeNP-SDK/5.5.1",
+      "User-Agent": "PayBridgeNP-SDK/5.7.0",
     };
+    if (!isSafe) {
+      headers["Idempotency-Key"] = idempotencyKey ?? crypto.randomUUID();
+    }
 
     let attempt = 0;
 
@@ -50,7 +67,7 @@ export class HttpClient {
           signal: AbortSignal.timeout(this.timeout),
         });
       } catch (err) {
-        if (attempt > this.maxRetries) {
+        if (!isSafe || attempt > this.maxRetries) {
           throw new ConnectionError(`Connection error: ${(err as Error).message}`);
         }
         await sleep(backoff(attempt));
@@ -61,7 +78,7 @@ export class HttpClient {
         return res.json() as Promise<T>;
       }
 
-      if (RETRY_STATUSES.has(res.status) && attempt <= this.maxRetries) {
+      if (isSafe && RETRY_STATUSES.has(res.status) && attempt <= this.maxRetries) {
         const retryAfter = res.headers.get("Retry-After");
         const delay = retryAfter ? parseInt(retryAfter) * 1000 : backoff(attempt);
         await sleep(delay);
@@ -80,7 +97,7 @@ export class HttpClient {
   }
 
   get<T>(path: string) { return this.request<T>("GET", path); }
-  post<T>(path: string, body: unknown) { return this.request<T>("POST", path, body); }
-  patch<T>(path: string, body: unknown) { return this.request<T>("PATCH", path, body); }
-  delete<T>(path: string) { return this.request<T>("DELETE", path); }
+  post<T>(path: string, body: unknown, idempotencyKey?: string) { return this.request<T>("POST", path, body, idempotencyKey); }
+  patch<T>(path: string, body: unknown, idempotencyKey?: string) { return this.request<T>("PATCH", path, body, idempotencyKey); }
+  delete<T>(path: string, idempotencyKey?: string) { return this.request<T>("DELETE", path, undefined, idempotencyKey); }
 }

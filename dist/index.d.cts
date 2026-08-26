@@ -7,6 +7,74 @@ type PayBridgeConfig = {
     maxRetries?: number;
 };
 type Metadata = Record<string, unknown>;
+type Account = {
+    merchant: {
+        id: string;
+        name: string;
+        email: string | null;
+        created_at: string;
+    };
+    project: {
+        id: string;
+        name: string;
+        mode: "sandbox" | "live";
+        created_at: string;
+    };
+    api_key: {
+        id: string;
+        prefix: string;
+        hint: string;
+        kind: string;
+        scopes: string[] | null;
+        description: string | null;
+        expires_at: string | null;
+        last_used_at: string | null;
+        spend_cap_paisa: number | null;
+    };
+    plan: string;
+    entitlements: Record<string, unknown>;
+};
+type AnalyticsOverview = {
+    window: {
+        days: number;
+        start: string;
+        end: string;
+    };
+    payments: {
+        total: number;
+        success: number;
+        failed: number;
+        success_rate: number;
+        success_volume_paisa: number;
+    };
+    funnel: {
+        sessions_created: number;
+        sessions_initiated: number;
+        sessions_paid: number;
+        conversion_rate_initiated_to_paid: number;
+    };
+    by_provider: Array<{
+        provider: Provider | null;
+        count: number;
+        success_count: number;
+        success_volume_paisa: number;
+    }>;
+};
+type ProviderList = {
+    providers: Provider[];
+};
+type NotifyPendingPaymentParams = {
+    customerPhone: string;
+    shopName: string;
+    orderName: string;
+    amountMinor: number;
+    currency: string;
+    checkoutUrl: string;
+};
+type SmsNotifyResult = {
+    sent: boolean;
+    status: string;
+};
 type CheckoutFlow = "hosted" | "redirect";
 type CreateCheckoutParams = {
     amount: number;
@@ -135,7 +203,20 @@ type WebhookDelivery = {
     responseBody: string | null;
     createdAt: string;
 };
+/**
+ * Every provider value that can appear on a session we RETURN, including
+ * providers that are no longer selectable. Historical rows keep them, so a
+ * response type must stay wide.
+ */
 type SessionProvider = "esewa" | "khalti" | "connectips" | "hamropay" | "fonepay";
+/**
+ * Providers you can actually ASK for. Narrower than SessionProvider on purpose:
+ * connectips and hamropay have no adapter, and the API rejects them with 400.
+ * Advertising them in a request type meant a program could compile and then
+ * fail at runtime (external review, 2026-07-28). Mirrors LIVE_PROVIDER_NAMES
+ * server-side.
+ */
+type LiveProvider = "esewa" | "khalti" | "fonepay";
 /** Billing address as returned on a retrieved session (all but line1/city nullable). */
 type SessionAddress = {
     line1: string;
@@ -223,7 +304,7 @@ type CreatePaymentLinkParams = {
     minAmount?: number | null;
     maxAmount?: number | null;
     currency?: "NPR";
-    provider?: SessionProvider | null;
+    provider?: LiveProvider | null;
     maxUses?: number | null;
     expiresAt?: string | null;
     redirectUrl?: string | null;
@@ -278,17 +359,17 @@ declare class HttpClient {
     private readonly timeout;
     private readonly maxRetries;
     constructor(config: PayBridgeConfig);
-    request<T>(method: string, path: string, body?: unknown): Promise<T>;
+    request<T>(method: string, path: string, body?: unknown, idempotencyKey?: string): Promise<T>;
     get<T>(path: string): Promise<T>;
-    post<T>(path: string, body: unknown): Promise<T>;
-    patch<T>(path: string, body: unknown): Promise<T>;
-    delete<T>(path: string): Promise<T>;
+    post<T>(path: string, body: unknown, idempotencyKey?: string): Promise<T>;
+    patch<T>(path: string, body: unknown, idempotencyKey?: string): Promise<T>;
+    delete<T>(path: string, idempotencyKey?: string): Promise<T>;
 }
 
 declare class CheckoutResource {
     private readonly http;
     constructor(http: HttpClient);
-    create(params: CreateCheckoutParams): Promise<CheckoutSession>;
+    create(params: CreateCheckoutParams, idempotencyKey?: string): Promise<CheckoutSession>;
     /**
      * Retrieve a checkout session by ID, including its current status, amount,
      * customer, and any collected address. Read-only — sessions are created via
@@ -317,7 +398,7 @@ declare class CheckoutResource {
      * Idempotent: calling on an already-terminal session is a no-op that
      * returns the current row state without error.
      */
-    expire(id: string): Promise<ExpiredCheckoutSession>;
+    expire(id: string, idempotencyKey?: string): Promise<ExpiredCheckoutSession>;
 }
 
 /**
@@ -328,24 +409,24 @@ declare class PaymentLinksResource {
     private readonly http;
     constructor(http: HttpClient);
     /** Create a payment link. Returns the created link (HTTP 201). */
-    create(params: CreatePaymentLinkParams): Promise<PaymentLink>;
+    create(params: CreatePaymentLinkParams, idempotencyKey?: string): Promise<PaymentLink>;
     /** List payment links for the project, newest first. Filter with `active`. */
     list(params?: ListPaymentLinksParams): Promise<PaginatedResponse<PaymentLink>>;
     /** Retrieve a single link by ID, including aggregated view/conversion stats. */
     retrieve(id: string): Promise<PaymentLinkWithStats>;
     /** Update a link's editable fields. Only the keys you pass are changed. */
-    update(id: string, params: UpdatePaymentLinkParams): Promise<PaymentLink>;
+    update(id: string, params: UpdatePaymentLinkParams, idempotencyKey?: string): Promise<PaymentLink>;
     /**
      * Cancel (deactivate) a link so it can no longer accept payments, while
      * keeping it and its history for your records. The recommended way to retire
      * a link that has already been used.
      */
-    cancel(id: string): Promise<PaymentLink>;
+    cancel(id: string, idempotencyKey?: string): Promise<PaymentLink>;
     /**
      * Permanently delete a link. Only allowed when the link has never been used —
      * otherwise the API returns 422 and you should {@link cancel} it instead.
      */
-    delete(id: string): Promise<DeletedPaymentLink>;
+    delete(id: string, idempotencyKey?: string): Promise<DeletedPaymentLink>;
 }
 
 declare class PaymentsResource {
@@ -392,7 +473,7 @@ type ListRefundsParams = {
 declare class RefundsResource {
     private readonly http;
     constructor(http: HttpClient);
-    create(params: CreateRefundParams): Promise<Refund>;
+    create(params: CreateRefundParams, idempotencyKey?: string): Promise<Refund>;
     list(params?: ListRefundsParams): Promise<PaginatedResponse<Refund>>;
     retrieve(id: string): Promise<Refund>;
 }
@@ -400,14 +481,14 @@ declare class RefundsResource {
 declare class WebhooksResource {
     private readonly http?;
     constructor(http?: HttpClient | undefined);
-    create(params: CreateWebhookParams): Promise<WebhookEndpoint & {
+    create(params: CreateWebhookParams, idempotencyKey?: string): Promise<WebhookEndpoint & {
         signing_secret: string;
     }>;
     list(): Promise<{
         data: WebhookEndpoint[];
     }>;
-    update(id: string, params: UpdateWebhookParams): Promise<WebhookEndpoint>;
-    delete(id: string): Promise<{
+    update(id: string, params: UpdateWebhookParams, idempotencyKey?: string): Promise<WebhookEndpoint>;
+    delete(id: string, idempotencyKey?: string): Promise<{
         deleted: boolean;
         id: string;
     }>;
@@ -916,10 +997,10 @@ type ChangePlanResult = {
 declare class PlansResource {
     private readonly http;
     constructor(http: HttpClient);
-    create(params: CreatePlanParams): Promise<Plan>;
+    create(params: CreatePlanParams, idempotencyKey?: string): Promise<Plan>;
     list(params?: ListPlansParams): Promise<PaginatedBillingResponse<Plan>>;
     get(id: string): Promise<Plan>;
-    update(id: string, params: UpdatePlanParams): Promise<Plan>;
+    update(id: string, params: UpdatePlanParams, idempotencyKey?: string): Promise<Plan>;
 }
 
 type AddCreditParams = {
@@ -930,11 +1011,11 @@ type AddCreditParams = {
 declare class CustomersResource {
     private readonly http;
     constructor(http: HttpClient);
-    create(params: CreateCustomerParams): Promise<BillingCustomer>;
+    create(params: CreateCustomerParams, idempotencyKey?: string): Promise<BillingCustomer>;
     list(params?: ListCustomersParams): Promise<PaginatedBillingResponse<BillingCustomer>>;
     get(id: string): Promise<BillingCustomer>;
-    update(id: string, params: UpdateCustomerParams): Promise<BillingCustomer>;
-    delete(id: string): Promise<{
+    update(id: string, params: UpdateCustomerParams, idempotencyKey?: string): Promise<BillingCustomer>;
+    delete(id: string, idempotencyKey?: string): Promise<{
         deleted: boolean;
     }>;
     /**
@@ -942,19 +1023,19 @@ declare class CustomersResource {
      * Credits are applied automatically against future invoices before payment.
      * @param amount Amount in paisa (NPR × 100).
      */
-    addCredit(id: string, params: AddCreditParams): Promise<BillingCustomer>;
+    addCredit(id: string, params: AddCreditParams, idempotencyKey?: string): Promise<BillingCustomer>;
 }
 
 declare class SubscriptionsResource {
     private readonly http;
     constructor(http: HttpClient);
-    create(params: CreateSubscriptionParams): Promise<Subscription>;
+    create(params: CreateSubscriptionParams, idempotencyKey?: string): Promise<Subscription>;
     list(params?: ListSubscriptionsParams): Promise<PaginatedBillingResponse<Subscription>>;
     get(id: string): Promise<Subscription>;
-    pause(id: string, params?: PauseSubscriptionParams): Promise<Subscription>;
-    resume(id: string): Promise<Subscription>;
-    cancel(id: string, params?: CancelSubscriptionParams): Promise<Subscription>;
-    changePlan(id: string, params: ChangePlanParams): Promise<ChangePlanResult>;
+    pause(id: string, params?: PauseSubscriptionParams, idempotencyKey?: string): Promise<Subscription>;
+    resume(id: string, idempotencyKey?: string): Promise<Subscription>;
+    cancel(id: string, params?: CancelSubscriptionParams, idempotencyKey?: string): Promise<Subscription>;
+    changePlan(id: string, params: ChangePlanParams, idempotencyKey?: string): Promise<ChangePlanResult>;
     /**
      * Preview the proration credit/debit amounts for a mid-period plan change
      * without committing any changes. Use before calling `changePlan` with
@@ -966,27 +1047,27 @@ declare class SubscriptionsResource {
      * and emails it to the customer. Fires `subscription.trial_ended` webhook.
      * Idempotent — subsequent calls return 409 `trial_not_active`.
      */
-    endTrial(id: string): Promise<EndTrialResponse>;
+    endTrial(id: string, idempotencyKey?: string): Promise<EndTrialResponse>;
     /**
      * Push the trial end date further into the future. Only valid while trial
      * is still active. Re-arms the 3-day-before reminder. Fires
      * `subscription.trial_extended` webhook.
      */
-    extendTrial(id: string, params: ExtendTrialParams): Promise<Subscription>;
+    extendTrial(id: string, params: ExtendTrialParams, idempotencyKey?: string): Promise<Subscription>;
     /**
      * Attach a coupon or promotion code to an existing subscription. Takes
      * effect on the next invoice. Deactivates any prior active discount on
      * this sub (partial unique index enforces one active discount per sub).
      */
-    applyCoupon(id: string, params: ApplyCouponParams): Promise<Discount>;
+    applyCoupon(id: string, params: ApplyCouponParams, idempotencyKey?: string): Promise<Discount>;
     /** Remove the currently active discount. Future invoices are un-discounted. */
-    removeDiscount(id: string): Promise<Discount>;
+    removeDiscount(id: string, idempotencyKey?: string): Promise<Discount>;
     /**
      * Report a usage event for a metered subscription. Use `action: "increment"`
      * (default) to add to the running total, or `action: "set"` for gauge-style
      * metrics. Pass `idempotencyKey` to prevent double-counting.
      */
-    reportUsage(id: string, params: ReportUsageParams): Promise<UsageReportAck>;
+    reportUsage(id: string, params: ReportUsageParams, idempotencyKey?: string): Promise<UsageReportAck>;
     /** Get the aggregated usage summary for the current billing period. */
     getUsageSummary(id: string): Promise<UsageSummary>;
     /** List raw usage records for a subscription. */
@@ -997,13 +1078,13 @@ declare class SubscriptionsResource {
      * Add a one-off charge to a subscription. It will be included (and consumed)
      * when the next invoice is generated.
      */
-    createInvoiceItem(id: string, params: CreateInvoiceItemParams): Promise<InvoiceItem>;
+    createInvoiceItem(id: string, params: CreateInvoiceItemParams, idempotencyKey?: string): Promise<InvoiceItem>;
     /** Delete a pending invoice item before it is invoiced. */
-    deleteInvoiceItem(subscriptionId: string, itemId: string): Promise<{
+    deleteInvoiceItem(subscriptionId: string, itemId: string, idempotencyKey?: string): Promise<{
         deleted: boolean;
     }>;
     /** Update the per-seat quantity on an active per_unit subscription. */
-    updateQuantity(id: string, quantity: number): Promise<Subscription>;
+    updateQuantity(id: string, quantity: number, idempotencyKey?: string): Promise<Subscription>;
 }
 
 type FonepayQrCustomer = {
@@ -1051,7 +1132,7 @@ declare class InvoicesResource {
      *
      * Premium feature; requires the `billing:write` scope and Fonepay configured.
      */
-    qr(id: string): Promise<FonepayQrSession>;
+    qr(id: string, idempotencyKey?: string): Promise<FonepayQrSession>;
 }
 
 declare class CouponsResource {
@@ -1061,11 +1142,11 @@ declare class CouponsResource {
      * Create a reusable coupon. Discount params are immutable post-creation —
      * replace by deactivating and creating a new one.
      */
-    create(params: CreateCouponParams): Promise<Coupon>;
+    create(params: CreateCouponParams, idempotencyKey?: string): Promise<Coupon>;
     list(params?: ListCouponsParams): Promise<BillingListResponse<Coupon>>;
     get(id: string): Promise<Coupon>;
     /** Deactivate. Soft-delete — historical redemptions remain intact. */
-    deactivate(id: string): Promise<Coupon>;
+    deactivate(id: string, idempotencyKey?: string): Promise<Coupon>;
 }
 
 declare class PromotionCodesResource {
@@ -1075,35 +1156,35 @@ declare class PromotionCodesResource {
      * Create a customer-facing promotion code that redeems a coupon. Code is
      * auto-uppercased server-side and unique per merchant.
      */
-    create(params: CreatePromotionCodeParams): Promise<PromotionCode>;
+    create(params: CreatePromotionCodeParams, idempotencyKey?: string): Promise<PromotionCode>;
     list(params?: ListPromotionCodesParams): Promise<BillingListResponse<PromotionCode>>;
     get(id: string): Promise<PromotionCode>;
     /** Deactivate. Existing redemptions remain valid. */
-    deactivate(id: string): Promise<PromotionCode>;
+    deactivate(id: string, idempotencyKey?: string): Promise<PromotionCode>;
     /**
      * Read-only validation with discount preview. Safe to poll. Does NOT
      * redeem the code.
      */
-    validate(params: ValidatePromotionCodeParams): Promise<ValidatePromotionCodeResponse>;
+    validate(params: ValidatePromotionCodeParams, idempotencyKey?: string): Promise<ValidatePromotionCodeResponse>;
 }
 
 declare class DunningResource {
     private readonly http;
     constructor(http: HttpClient);
-    createPolicy(params: CreateDunningPolicyParams): Promise<DunningPolicy>;
+    createPolicy(params: CreateDunningPolicyParams, idempotencyKey?: string): Promise<DunningPolicy>;
     listPolicies(): Promise<{
         data: DunningPolicy[];
     }>;
     getPolicy(id: string): Promise<DunningPolicy>;
-    updatePolicy(id: string, params: UpdateDunningPolicyParams): Promise<DunningPolicy>;
-    setSubscriptionPolicy(subscriptionId: string, policyId: string | null): Promise<{
+    updatePolicy(id: string, params: UpdateDunningPolicyParams, idempotencyKey?: string): Promise<DunningPolicy>;
+    setSubscriptionPolicy(subscriptionId: string, policyId: string | null, idempotencyKey?: string): Promise<{
         ok: boolean;
     }>;
     getInvoiceStatus(invoiceId: string): Promise<DunningInvoiceStatus>;
-    stopInvoice(invoiceId: string): Promise<{
+    stopInvoice(invoiceId: string, idempotencyKey?: string): Promise<{
         ok: boolean;
     }>;
-    retryInvoiceNow(invoiceId: string): Promise<{
+    retryInvoiceNow(invoiceId: string, idempotencyKey?: string): Promise<{
         ok: boolean;
     }>;
 }
@@ -1115,7 +1196,7 @@ declare class TaxResource {
     /** Get the current tax settings. */
     getSettings(): Promise<TaxSettings>;
     /** Update tax settings (enabled, rate, registration number, label). */
-    updateSettings(params: UpdateTaxSettingsParams): Promise<TaxSettings>;
+    updateSettings(params: UpdateTaxSettingsParams, idempotencyKey?: string): Promise<TaxSettings>;
 }
 
 declare class QrResource {
@@ -1127,7 +1208,7 @@ declare class QrResource {
      *
      * Premium feature — requires the merchant to be on the Premium plan.
      */
-    fonepay(params: CreateFonepayQrParams): Promise<FonepayQrSession>;
+    fonepay(params: CreateFonepayQrParams, idempotencyKey?: string): Promise<FonepayQrSession>;
     /**
      * Refresh a Direct-QR session: regenerate a fresh Fonepay QR for the SAME
      * session (same `id`, `events_url`, and webhook) without spawning a new
@@ -1138,7 +1219,39 @@ declare class QrResource {
      *
      * Premium feature — requires the merchant to be on the Premium plan.
      */
-    refresh(id: string): Promise<FonepayQrSession>;
+    refresh(id: string, idempotencyKey?: string): Promise<FonepayQrSession>;
+}
+
+/** Account context implied by the calling API key. */
+declare class AccountResource {
+    private readonly http;
+    constructor(http: HttpClient);
+    get(): Promise<Account>;
+}
+
+/** Aggregated payment and checkout KPIs. */
+declare class AnalyticsResource {
+    private readonly http;
+    constructor(http: HttpClient);
+    overview(days?: number): Promise<AnalyticsOverview>;
+}
+
+/** Providers enabled and configured for the authenticated project. */
+declare class ProvidersResource {
+    private readonly http;
+    constructor(http: HttpClient);
+    list(): Promise<ProviderList>;
+}
+
+/** Transactional SMS operations. */
+declare class SmsResource {
+    private readonly http;
+    constructor(http: HttpClient);
+    /**
+     * Send a pending-payment reminder. The optional key is sent for SDK API
+     * consistency, but the server does not currently deduplicate this route.
+     */
+    notifyPendingPayment(params: NotifyPendingPaymentParams, idempotencyKey?: string): Promise<SmsNotifyResult>;
 }
 
 declare class PayBridgeNP {
@@ -1159,6 +1272,10 @@ declare class PayBridgeNP {
     private _dunning?;
     private _tax?;
     private _qr?;
+    private _account?;
+    private _analytics?;
+    private _providers?;
+    private _sms?;
     constructor(config: PayBridgeConfig);
     get checkout(): CheckoutResource;
     /** Reusable hosted payment pages — create / list / retrieve / update / cancel / delete. */
@@ -1180,6 +1297,14 @@ declare class PayBridgeNP {
      * + SSE event stream so developers can build their own checkout UI.
      */
     get qr(): QrResource;
+    /** Account context implied by the calling API key. */
+    get account(): AccountResource;
+    /** Aggregated payment and checkout KPIs. */
+    get analytics(): AnalyticsResource;
+    /** Providers enabled and configured for this project. */
+    get providers(): ProvidersResource;
+    /** Transactional SMS operations. */
+    get sms(): SmsResource;
 }
 
 type PayBridgeErrorType = "authentication_error" | "account_error" | "permission_error" | "invalid_request_error" | "idempotency_error" | "rate_limit_error" | "api_error" | "connection_error" | "signature_verification_error";
@@ -1238,6 +1363,21 @@ declare class PermissionError extends PayBridgeError {
 declare class InvalidRequestError extends PayBridgeError {
     constructor(message: string, statusCode?: number, opts?: ConstructorParameters<typeof PayBridgeError>[3]);
 }
+/**
+ * HTTP 404. A SUBCLASS of `InvalidRequestError`, so `instanceof
+ * InvalidRequestError` still matches a 404 exactly as before, while
+ * `instanceof NotFoundError` narrows to 404 only. The Stripe-style `type`
+ * stays `invalid_request_error`.
+ *
+ * Added 2026-08-16 for parity with the PHP and Python SDKs, which both had a
+ * NotFound class whose docs promised a working narrow catch while nothing ever
+ * constructed it. `PayBridgeNotFoundError` below is the OLD alias and is left
+ * pointing at `InvalidRequestError` on purpose — repointing it here would
+ * narrow existing callers' catches, which would be a breaking change.
+ */
+declare class NotFoundError extends InvalidRequestError {
+    constructor(message: string, opts?: ConstructorParameters<typeof PayBridgeError>[3]);
+}
 declare class IdempotencyError extends PayBridgeError {
     constructor(message: string, opts?: ConstructorParameters<typeof PayBridgeError>[3]);
 }
@@ -1274,6 +1414,6 @@ declare const PayBridgeNotFoundError: typeof InvalidRequestError;
  */
 declare function parseErrorResponse(statusCode: number, body: Record<string, unknown> | null, retryAfterHeader: string | null): PayBridgeError;
 
-declare const SDK_VERSION: "5.5.1";
+declare const SDK_VERSION: "5.7.0";
 
-export { AccountError, type AggregationMethod, ApiError, type ApplyCouponParams, AuthenticationError, type BillingCustomer, type BillingListResponse, type BillingScheme, type CancelSubscriptionParams, type ChangePlanParams, type ChangePlanResult, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, ConnectionError, type Coupon, type CouponDiscountType, type CouponDuration, type CreateCheckoutParams, type CreateCouponParams, type CreateCustomerParams, type CreateDunningPolicyParams, type CreateFonepayQrParams, type CreateInvoiceItemParams, type CreatePaymentLinkParams, type CreatePlanParams, type CreatePromotionCodeParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type CustomerRef, type DeletedPaymentLink, type Discount, type DunningAttempt, type DunningFinalAction, type DunningInvoiceStatus, type DunningPolicy, type EndTrialResponse, type ExpiredCheckoutSession, type ExtendTrialParams, type FonepayQrCustomer, type FonepayQrSession, IdempotencyError, type IntervalUnit, InvalidRequestError, type Invoice, type InvoiceItem, type InvoiceStatus, type InvoiceSubscriptionRef, type ListCouponsParams, type ListCustomersParams, type ListInvoicesParams, type ListPaymentLinksParams, type ListPaymentsParams, type ListPlansParams, type ListPromotionCodesParams, type ListRefundsParams, type ListSessionsParams, type ListSubscriptionsParams, type Metadata, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseDetail, type PauseSubscriptionParams, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorType as PayBridgeErrorCode, type PayBridgeErrorType, PayBridgeInvalidRequestError, PayBridgeNP, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentLink, type PaymentLinkWithStats, type PaymentStatus, PermissionError, type Plan, type PlanRef, type PromotionCode, type ProrationBehavior, type ProrationPreview, type Provider, RateLimitError, type Refund, type RefundReason, type RefundStatus, type ReportUsageParams, type RetrievedCheckoutSession, SDK_VERSION, type SessionAddress, type SessionProvider, SignatureVerificationError, type Subscription, type SubscriptionLatestInvoice, type SubscriptionStatus, type SuspensionDetail, type TaxSettings, type UpdateCustomerParams, type UpdateDunningPolicyParams, type UpdatePaymentLinkParams, type UpdatePlanParams, type UpdateTaxSettingsParams, type UsageRecord, type UsageReportAck, type UsageSummary, type ValidatePromotionCodeParams, type ValidatePromotionCodeResponse, type WebhookEndpoint, type WebhookEvent, type WebhookEventType, parseErrorResponse };
+export { type Account, AccountError, type AggregationMethod, type AnalyticsOverview, ApiError, type ApplyCouponParams, AuthenticationError, type BillingCustomer, type BillingListResponse, type BillingScheme, type CancelSubscriptionParams, type ChangePlanParams, type ChangePlanResult, type CheckoutFlow, type CheckoutSession, type CheckoutSessionStatus, ConnectionError, type Coupon, type CouponDiscountType, type CouponDuration, type CreateCheckoutParams, type CreateCouponParams, type CreateCustomerParams, type CreateDunningPolicyParams, type CreateFonepayQrParams, type CreateInvoiceItemParams, type CreatePaymentLinkParams, type CreatePlanParams, type CreatePromotionCodeParams, type CreateRefundParams, type CreateSubscriptionParams, type CreateWebhookParams, type CustomerRef, type DeletedPaymentLink, type Discount, type DunningAttempt, type DunningFinalAction, type DunningInvoiceStatus, type DunningPolicy, type EndTrialResponse, type ExpiredCheckoutSession, type ExtendTrialParams, type FonepayQrCustomer, type FonepayQrSession, IdempotencyError, type IntervalUnit, InvalidRequestError, type Invoice, type InvoiceItem, type InvoiceStatus, type InvoiceSubscriptionRef, type ListCouponsParams, type ListCustomersParams, type ListInvoicesParams, type ListPaymentLinksParams, type ListPaymentsParams, type ListPlansParams, type ListPromotionCodesParams, type ListRefundsParams, type ListSessionsParams, type ListSubscriptionsParams, type Metadata, NotFoundError, type NotifyPendingPaymentParams, type OverdueAction, type PaginatedBillingResponse, type PaginatedResponse, type PaginationMeta, type PauseDetail, type PauseSubscriptionParams, PayBridgeAuthenticationError, type PayBridgeConfig, PayBridgeError, type PayBridgeErrorType as PayBridgeErrorCode, type PayBridgeErrorType, PayBridgeInvalidRequestError, PayBridgeNP, PayBridgeNotFoundError, PayBridgeRateLimitError, PayBridgeSignatureVerificationError, type Payment, type PaymentLink, type PaymentLinkWithStats, type PaymentStatus, PermissionError, type Plan, type PlanRef, type PromotionCode, type ProrationBehavior, type ProrationPreview, type Provider, type ProviderList, RateLimitError, type Refund, type RefundReason, type RefundStatus, type ReportUsageParams, type RetrievedCheckoutSession, SDK_VERSION, type SessionAddress, type SessionProvider, SignatureVerificationError, type SmsNotifyResult, type Subscription, type SubscriptionLatestInvoice, type SubscriptionStatus, type SuspensionDetail, type TaxSettings, type UpdateCustomerParams, type UpdateDunningPolicyParams, type UpdatePaymentLinkParams, type UpdatePlanParams, type UpdateTaxSettingsParams, type UsageRecord, type UsageReportAck, type UsageSummary, type ValidatePromotionCodeParams, type ValidatePromotionCodeResponse, type WebhookEndpoint, type WebhookEvent, type WebhookEventType, parseErrorResponse };
